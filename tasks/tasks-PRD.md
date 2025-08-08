@@ -4,7 +4,7 @@
 - `src/preload.js` - Preload script for secure IPC communication between main and renderer (modified)
 - `src/renderer.js` - Renderer process entry point, will handle UI and audio processing (modified)
 - `src/index.html` - Main HTML structure for the application UI (modified)
-- `src/components/AudioMixer.js` - Audio mixing logic using Web Audio API
+- `src/components/AudioMixer.js` - Audio mixing logic using Web Audio API (created)
 - `src/components/DeepgramClient.js` - WebSocket client for Deepgram STT
 - `src/components/TranslationService.js` - Google Translate API integration
 - `src/components/TranscriptManager.js` - File writing and session management
@@ -27,7 +27,7 @@
   - [x] 1.5 Update package.json scripts for dev and build commands
   - [x] 1.6 Set up TypeScript configuration if needed for better type safety (skipped - using JS)
 
-- [ ] 2.0 Implement core UI structure and controls
+- [x] 2.0 Implement core UI structure and controls
   - [x] 2.1 Create HTML structure with top bar controls section
   - [x] 2.2 Add direction selector (EN→ES / ES→EN radio buttons)
   - [x] 2.3 Implement microphone device dropdown selector
@@ -39,16 +39,16 @@
   - [x] 2.9 Style the application with clean, readable CSS
 
 - [ ] 3.0 Build audio capture and mixing system
-  - [ ] 3.1 Request microphone permissions and enumerate audio devices
-  - [ ] 3.2 Implement device selection logic for mic and system audio
-  - [ ] 3.3 Create AudioContext and set up audio graph
-  - [ ] 3.4 Capture mic stream using getUserMedia with selected deviceId
-  - [ ] 3.5 Capture system audio stream (BlackHole device) with getUserMedia
-  - [ ] 3.6 Create MediaStreamAudioSourceNodes for both streams
-  - [ ] 3.7 Set up GainNodes for volume control (if needed)
-  - [ ] 3.8 Connect both sources to MediaStreamAudioDestinationNode
-  - [ ] 3.9 Extract mixed stream for Deepgram processing
-  - [ ] 3.10 Implement stream cleanup on stop
+  - [x] 3.1 Request microphone permissions and enumerate audio devices
+  - [x] 3.2 Implement device selection logic for mic and system audio
+  - [x] 3.3 Create AudioContext and set up audio graph
+  - [x] 3.4 Capture mic stream using getUserMedia with selected deviceId
+  - [x] 3.5 Capture system audio stream (BlackHole device) with getUserMedia
+  - [x] 3.6 Create MediaStreamAudioSourceNodes for both streams
+  - [x] 3.7 Set up GainNodes for volume control (if needed)
+  - [x] 3.8 Connect both sources to MediaStreamAudioDestinationNode
+  - [x] 3.9 Extract mixed stream for Deepgram processing
+  - [x] 3.10 Implement stream cleanup on stop
 
 - [ ] 4.0 Integrate Deepgram real-time STT service
   - [ ] 4.1 Create Deepgram WebSocket client module

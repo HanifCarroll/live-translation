@@ -27,6 +27,7 @@
  */
 
 import './index.css';
+import AudioMixer from './components/AudioMixer.js';
 
 // App State
 const appState = {
@@ -37,6 +38,9 @@ const appState = {
   isRecording: false,
   status: 'READY'
 };
+
+// Global audio mixer instance
+let audioMixer = null;
 
 // Direction Selector Handler
 function initializeDirectionSelector() {
@@ -257,8 +261,19 @@ async function startRecording() {
     console.log('System Device:', appState.systemDeviceId);
     console.log('Output Folder:', appState.outputFolder);
     
-    // TODO: Initialize audio capture and streaming
-    // TODO: Connect to Deepgram
+    // Initialize audio capture and mixing
+    audioMixer = new AudioMixer();
+    await audioMixer.initialize();
+    
+    // Connect audio streams
+    await audioMixer.connectMicrophoneStream(appState.micDeviceId);
+    await audioMixer.connectSystemStream(appState.systemDeviceId);
+    
+    // Get mixed stream for processing
+    const mixedStream = audioMixer.getMixedStream();
+    console.log('Audio mixing setup complete, mixed stream ready');
+    
+    // TODO: Connect to Deepgram with mixedStream
     // TODO: Start translation service
     
     updateStatus('LISTENING');
@@ -281,7 +296,12 @@ async function stopRecording() {
     startStopBtn.textContent = 'Start';
     startStopBtn.classList.remove('stop-mode');
     
-    // TODO: Stop audio streams
+    // Stop audio streams
+    if (audioMixer) {
+      audioMixer.cleanup();
+      audioMixer = null;
+    }
+    
     // TODO: Close WebSocket connections
     
     // Clear translation display
