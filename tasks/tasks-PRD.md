@@ -1,14 +1,14 @@
 ## Relevant Files
 
-- `src/main.js` - Main Electron process, needs IPC handlers for file operations and API key access
-- `src/preload.js` - Preload script for secure IPC communication between main and renderer
-- `src/renderer.js` - Renderer process entry point, will handle UI and audio processing
-- `src/index.html` - Main HTML structure for the application UI
+- `src/main.js` - Main Electron process, needs IPC handlers for file operations and API key access (modified)
+- `src/preload.js` - Preload script for secure IPC communication between main and renderer (modified)
+- `src/renderer.js` - Renderer process entry point, will handle UI and audio processing (modified)
+- `src/index.html` - Main HTML structure for the application UI (modified)
 - `src/components/AudioMixer.js` - Audio mixing logic using Web Audio API
 - `src/components/DeepgramClient.js` - WebSocket client for Deepgram STT
 - `src/components/TranslationService.js` - Google Translate API integration
 - `src/components/TranscriptManager.js` - File writing and session management
-- `src/styles/app.css` - Application styling
+- `src/index.css` - Application styling (modified)
 - `.env` - Environment variables for API keys
 - `package.json` - Dependencies and scripts configuration
 
@@ -19,7 +19,7 @@
 
 ## Tasks
 
-- [ ] 1.0 Set up project dependencies and environment configuration
+- [x] 1.0 Set up project dependencies and environment configuration
   - [x] 1.1 Install required npm packages (dotenv, @deepgram/sdk, @google-cloud/translate or googleapis)
   - [x] 1.2 Create .env file with DEEPGRAM_API_KEY and GOOGLE_API_KEY placeholders
   - [x] 1.3 Add .env to .gitignore to prevent API key exposure
@@ -28,15 +28,15 @@
   - [x] 1.6 Set up TypeScript configuration if needed for better type safety (skipped - using JS)
 
 - [ ] 2.0 Implement core UI structure and controls
-  - [ ] 2.1 Create HTML structure with top bar controls section
-  - [ ] 2.2 Add direction selector (EN→ES / ES→EN radio buttons)
-  - [ ] 2.3 Implement microphone device dropdown selector
-  - [ ] 2.4 Implement system audio device dropdown selector (for BlackHole)
-  - [ ] 2.5 Add output folder picker with Electron dialog
-  - [ ] 2.6 Create Start/Stop button with state management
-  - [ ] 2.7 Add status chip component showing connection states
-  - [ ] 2.8 Create translation overlay panel (3-line rolling display)
-  - [ ] 2.9 Style the application with clean, readable CSS
+  - [x] 2.1 Create HTML structure with top bar controls section
+  - [x] 2.2 Add direction selector (EN→ES / ES→EN radio buttons)
+  - [x] 2.3 Implement microphone device dropdown selector
+  - [x] 2.4 Implement system audio device dropdown selector (for BlackHole)
+  - [x] 2.5 Add output folder picker with Electron dialog
+  - [x] 2.6 Create Start/Stop button with state management
+  - [x] 2.7 Add status chip component showing connection states
+  - [x] 2.8 Create translation overlay panel (3-line rolling display)
+  - [x] 2.9 Style the application with clean, readable CSS
 
 - [ ] 3.0 Build audio capture and mixing system
   - [ ] 3.1 Request microphone permissions and enumerate audio devices

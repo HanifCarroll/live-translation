@@ -2,11 +2,65 @@
 <html>
   <head>
     <meta charset="UTF-8" />
-    <title>Hello World!</title>
-
+    <title>Live Translator</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
   </head>
   <body>
-    <h1>💖 Hello World!</h1>
-    <p>Welcome to your Electron application.</p>
+    <div id="app">
+      <!-- Top Bar Controls -->
+      <div id="controls" class="top-bar">
+        <div class="control-group">
+          <label for="direction">Translation Direction:</label>
+          <div class="radio-group" id="direction">
+            <label>
+              <input type="radio" name="direction" value="en-es" checked>
+              EN→ES
+            </label>
+            <label>
+              <input type="radio" name="direction" value="es-en">
+              ES→EN
+            </label>
+          </div>
+        </div>
+
+        <div class="control-group">
+          <label for="mic-select">Microphone:</label>
+          <select id="mic-select" class="device-select">
+            <option value="">Select microphone...</option>
+          </select>
+        </div>
+
+        <div class="control-group">
+          <label for="system-select">System Audio (BlackHole):</label>
+          <select id="system-select" class="device-select">
+            <option value="">Select system audio...</option>
+          </select>
+        </div>
+
+        <div class="control-group">
+          <label for="output-folder">Output Folder:</label>
+          <div class="folder-picker">
+            <input type="text" id="output-folder" readonly placeholder="No folder selected">
+            <button id="folder-picker-btn">Choose Folder</button>
+          </div>
+        </div>
+
+        <div class="control-group">
+          <button id="start-stop-btn" class="primary-btn" disabled>Start</button>
+        </div>
+      </div>
+
+      <!-- Status Indicator -->
+      <div id="status-container">
+        <span id="status-chip" class="status-chip status-ready">READY</span>
+      </div>
+
+      <!-- Translation Overlay Panel -->
+      <div id="translation-panel" class="translation-panel">
+        <div id="translation-content" class="translation-content">
+          <!-- Translated lines will appear here -->
+        </div>
+      </div>
+    </div>
   </body>
 </html>
