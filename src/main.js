@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog, session } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, session, shell } = require('electron');
 const path = require('node:path');
 const fs = require('node:fs');
 require('dotenv').config();
@@ -161,4 +161,24 @@ ipcMain.handle('config:getApiKeys', async () => {
     deepgramApiKey: process.env.DEEPGRAM_API_KEY,
     googleApiKey: process.env.GOOGLE_API_KEY
   };
+});
+
+// Handle opening system settings
+ipcMain.handle('system:openSettings', async () => {
+  try {
+    if (process.platform === 'darwin') {
+      // macOS: Open Privacy & Security > Microphone settings
+      await shell.openExternal('x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone');
+    } else if (process.platform === 'win32') {
+      // Windows: Open Settings > Privacy > Microphone
+      await shell.openExternal('ms-settings:privacy-microphone');
+    } else {
+      // Linux: Try to open system settings
+      await shell.openExternal('gnome-control-center sound');
+    }
+    return { success: true };
+  } catch (error) {
+    console.error('Error opening system settings:', error);
+    return { success: false, error: error.message };
+  }
 });

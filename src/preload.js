@@ -14,5 +14,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   closeTranscriptFiles: () => ipcRenderer.invoke('files:closeTranscripts'),
   
   // API Keys
-  getApiKeys: () => ipcRenderer.invoke('config:getApiKeys')
+  getApiKeys: () => ipcRenderer.invoke('config:getApiKeys'),
+  
+  // System Settings
+  openSystemSettings: () => ipcRenderer.invoke('system:openSettings')
 });

@@ -156,6 +156,50 @@ body {
   margin: 20px 0;
 }
 
+/* Inline Error Messages */
+.inline-error {
+  display: inline-block;
+  margin-left: 15px;
+  padding: 4px 12px;
+  background: rgba(239, 68, 68, 0.1);
+  color: #dc2626;
+  border-radius: 4px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+/* Permission Error */
+.permission-error {
+  margin-top: 15px;
+  padding: 15px;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: 8px;
+  text-align: center;
+}
+
+.permission-error p {
+  margin: 0 0 10px 0;
+  color: #dc2626;
+  font-size: 14px;
+}
+
+.settings-button {
+  padding: 8px 16px;
+  background: #dc2626;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.3s;
+}
+
+.settings-button:hover {
+  background: #b91c1c;
+}
+
 .status-chip {
   display: inline-block;
   padding: 6px 16px;

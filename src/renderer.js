@@ -78,6 +78,34 @@ function updateStartButtonState() {
                    !appState.isRecording;
   
   startBtn.disabled = !canStart;
+  
+  // Display inline error messages for missing fields
+  const statusContainer = document.getElementById('status-container');
+  let errorMessage = '';
+  
+  if (!appState.isRecording) {
+    if (!appState.micDeviceId) {
+      errorMessage = 'Please select a microphone';
+    } else if (!appState.systemDeviceId) {
+      errorMessage = 'Please select system audio device';
+    } else if (!appState.outputFolder) {
+      errorMessage = 'Please select output folder';
+    }
+  }
+  
+  // Show or hide error message
+  let errorDiv = document.getElementById('inline-error');
+  if (errorMessage) {
+    if (!errorDiv) {
+      errorDiv = document.createElement('div');
+      errorDiv.id = 'inline-error';
+      errorDiv.className = 'inline-error';
+      statusContainer.appendChild(errorDiv);
+    }
+    errorDiv.textContent = errorMessage;
+  } else if (errorDiv) {
+    errorDiv.remove();
+  }
 }
 
 // Microphone Device Selector Handler
@@ -134,6 +162,7 @@ async function initializeMicrophoneSelector() {
     // Show error message to user
     if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
       micSelect.innerHTML = '<option value="">Permission denied - please allow microphone access</option>';
+      showPermissionError('microphone');
     }
   }
 }
@@ -489,6 +518,42 @@ function updateStatus(status) {
       break;
     default:
       statusChip.textContent = status;
+  }
+}
+
+// Show permission error with button to open system settings
+function showPermissionError(deviceType) {
+  const controlsDiv = document.getElementById('controls');
+  let errorDiv = document.getElementById('permission-error');
+  
+  if (!errorDiv) {
+    errorDiv = document.createElement('div');
+    errorDiv.id = 'permission-error';
+    errorDiv.className = 'permission-error';
+    
+    const message = document.createElement('p');
+    message.textContent = `${deviceType === 'microphone' ? 'Microphone' : 'Audio'} access denied. Please allow access in System Settings.`;
+    
+    const settingsBtn = document.createElement('button');
+    settingsBtn.textContent = 'Open System Settings';
+    settingsBtn.className = 'settings-button';
+    settingsBtn.onclick = openSystemSettings;
+    
+    errorDiv.appendChild(message);
+    errorDiv.appendChild(settingsBtn);
+    controlsDiv.appendChild(errorDiv);
+  }
+}
+
+// Open system settings for permissions
+async function openSystemSettings() {
+  try {
+    // Use Electron shell to open system preferences
+    await window.electronAPI.openSystemSettings();
+  } catch (error) {
+    console.error('Error opening system settings:', error);
+    // Fallback: show instructions
+    alert('Please open System Preferences > Security & Privacy > Privacy > Microphone and allow access for this application.');
   }
 }
 

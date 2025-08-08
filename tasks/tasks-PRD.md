@@ -50,7 +50,7 @@
   - [x] 3.9 Extract mixed stream for Deepgram processing
   - [x] 3.10 Implement stream cleanup on stop
 
-- [ ] 4.0 Integrate Deepgram real-time STT service
+- [x] 4.0 Integrate Deepgram real-time STT service
   - [x] 4.1 Create Deepgram WebSocket client module
   - [x] 4.2 Configure connection with API key from environment
   - [x] 4.3 Set up real-time streaming parameters (smart punctuation enabled)
