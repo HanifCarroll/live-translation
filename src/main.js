@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, session } = require('electron');
 const path = require('node:path');
 const fs = require('node:fs');
 require('dotenv').config();
@@ -15,6 +15,9 @@ const createWindow = () => {
     height: 600,
     webPreferences: {
       preload: MAIN_WINDOW_PRELOAD_WEBPACK_ENTRY,
+      nodeIntegration: false,
+      contextIsolation: true,
+      webSecurity: false, // Temporarily disable for testing
     },
   });
 
@@ -38,6 +41,20 @@ app.whenReady().then(() => {
       createWindow();
     }
   });
+});
+
+app.whenReady().then(() => {
+  if (!app.isPackaged) {
+    const ses = session.defaultSession;
+    ses.webRequest.onHeadersReceived((details, callback) => {
+      const headers = details.responseHeaders || {};
+      delete headers['content-security-policy'];
+      delete headers['Content-Security-Policy'];
+      callback({ responseHeaders: headers });
+    });
+  }
+
+  createWindow();
 });
 
 // Quit when all windows are closed, except on macOS. There, it's common

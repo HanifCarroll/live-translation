@@ -17,4 +17,9 @@ module.exports = {
       silent: true,
     }),
   ],
+  devServer: {
+    headers: {
+      'Content-Security-Policy': "default-src 'self' 'unsafe-inline' data:; connect-src 'self' wss://api.deepgram.com https://translation.googleapis.com; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline';",
+    },
+  },
 };

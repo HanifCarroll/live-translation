@@ -11,6 +11,7 @@ class AudioMixer {
     this.mixedStream = null;
     this.micStream = null;
     this.systemStream = null;
+    this.mediaRecorder = null;
   }
 
   // Initialize the audio context and graph
@@ -119,6 +120,67 @@ class AudioMixer {
     return this.mixedStream;
   }
 
+  // Set up audio streaming to Deepgram with PCM encoding
+  async setupDeepgramStreaming(deepgramClient) {
+    if (!this.mixedStream) {
+      throw new Error('Mixed stream not available');
+    }
+
+    // Try different MIME types - PCM is rarely supported in browsers
+    const supportedTypes = [
+      'audio/webm;codecs=pcm',
+      'audio/webm;codecs=opus',
+      'audio/webm',
+      'audio/mp4',
+      'audio/ogg;codecs=opus'
+    ];
+    
+    let selectedType = null;
+    for (const type of supportedTypes) {
+      if (MediaRecorder.isTypeSupported(type)) {
+        selectedType = type;
+        console.log('Using MIME type:', selectedType);
+        break;
+      }
+    }
+    
+    if (!selectedType) {
+      throw new Error('No supported audio codec found');
+    }
+
+    // Create MediaRecorder with the best available codec
+    let mediaRecorder = new MediaRecorder(this.mixedStream, { mimeType: selectedType });
+    
+    // Note: Deepgram expects linear16 PCM, but we're sending compressed audio
+    // This might require format conversion or different Deepgram parameters
+
+    // Set up data handling
+    mediaRecorder.ondataavailable = (event) => {
+      if (event.data.size > 0 && deepgramClient && deepgramClient.isConnected) {
+        console.log('Audio data available:', event.data.size, 'bytes');
+        // Convert blob to ArrayBuffer for Deepgram
+        event.data.arrayBuffer().then(buffer => {
+          console.log('Sending audio buffer to Deepgram:', buffer.byteLength, 'bytes');
+          deepgramClient.sendAudio(buffer);
+        });
+      } else {
+        console.log('Skipping audio data - size:', event.data.size, 'connected:', deepgramClient?.isConnected);
+      }
+    };
+
+    mediaRecorder.onerror = (error) => {
+      console.error('MediaRecorder error:', error);
+    };
+
+    // Start recording with small time slices for real-time streaming
+    mediaRecorder.start(100); // 100ms chunks for low latency
+    
+    console.log('MediaRecorder started with format:', selectedType);
+    console.log('MediaRecorder state:', mediaRecorder.state);
+    
+    return mediaRecorder;
+  }
+
   // Set microphone volume (0.0 to 1.0)
   setMicrophoneVolume(volume) {
     if (this.micGainNode) {
@@ -136,6 +198,12 @@ class AudioMixer {
   // Cleanup and disconnect all streams
   cleanup() {
     try {
+      // Stop MediaRecorder
+      if (this.mediaRecorder && this.mediaRecorder.state !== 'inactive') {
+        this.mediaRecorder.stop();
+        this.mediaRecorder = null;
+      }
+
       // Disconnect nodes
       if (this.micSourceNode) {
         this.micSourceNode.disconnect();

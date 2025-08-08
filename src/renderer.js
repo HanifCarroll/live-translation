@@ -28,6 +28,8 @@
 
 import './index.css';
 import AudioMixer from './components/AudioMixer.js';
+import DeepgramClient from './components/DeepgramClient.js';
+import TranslationService from './components/TranslationService.js';
 
 // App State
 const appState = {
@@ -39,8 +41,10 @@ const appState = {
   status: 'READY'
 };
 
-// Global audio mixer instance
+// Global audio mixer, Deepgram client, and translation service instances
 let audioMixer = null;
+let deepgramClient = null;
+let translationService = null;
 
 // Direction Selector Handler
 function initializeDirectionSelector() {
@@ -273,8 +277,83 @@ async function startRecording() {
     const mixedStream = audioMixer.getMixedStream();
     console.log('Audio mixing setup complete, mixed stream ready');
     
-    // TODO: Connect to Deepgram with mixedStream
-    // TODO: Start translation service
+    // Get API keys and validate
+    const apiKeys = await window.electronAPI.getApiKeys();
+    if (!apiKeys.deepgramApiKey || apiKeys.deepgramApiKey === 'your_deepgram_api_key_here') {
+      throw new Error('Deepgram API key not configured. Please set DEEPGRAM_API_KEY in .env file.');
+    }
+    if (!apiKeys.googleApiKey || apiKeys.googleApiKey === 'your_google_api_key_here') {
+      throw new Error('Google API key not configured. Please set GOOGLE_API_KEY in .env file.');
+    }
+    
+    // Initialize services
+    deepgramClient = new DeepgramClient(apiKeys.deepgramApiKey);
+    translationService = new TranslationService(apiKeys.googleApiKey);
+    
+    // Set up Deepgram callbacks
+    deepgramClient.onConnection((status) => {
+      if (status === 'connected') {
+        updateStatus('LISTENING');
+      } else if (status === 'reconnecting') {
+        updateStatus('RECONNECTING');
+      } else if (status === 'disconnected') {
+        updateStatus('ERROR');
+      }
+    });
+    
+    deepgramClient.onTranscript(async (result) => {
+      console.log('Received transcript:', result.text);
+      
+      try {
+        // Translate the text
+        const translatedText = await translationService.translateForDirection(
+          result.text, 
+          appState.direction
+        );
+        
+        if (translatedText) {
+          // Display translation in UI
+          translationDisplay.addTranslation(translatedText);
+          
+          // Write to transcript files
+          const { source, target } = translationService.getLanguageCodes(appState.direction);
+          
+          // Write source text to appropriate file
+          await window.electronAPI.appendToTranscript(source, result.text);
+          
+          // Write translated text to appropriate file  
+          await window.electronAPI.appendToTranscript(target, translatedText);
+          
+          console.log('Translation complete and written to files');
+        }
+      } catch (error) {
+        console.error('Translation error:', error);
+        // Still display the original text if translation fails
+        translationDisplay.addTranslation(`[Translation Error] ${result.text}`);
+      }
+    });
+    
+    deepgramClient.onError((error) => {
+      console.error('Deepgram error:', error);
+      updateStatus('ERROR');
+    });
+    
+    // Connect to Deepgram and wait for connection
+    await deepgramClient.connect();
+    
+    // Wait a moment to ensure WebSocket is fully connected
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
+    deepgramClient.startRecording();
+    
+    // Set up audio streaming to Deepgram
+    audioMixer.mediaRecorder = await audioMixer.setupDeepgramStreaming(deepgramClient);
+    console.log('Audio streaming to Deepgram initialized');
+    
+    // Test translation service
+    console.log('Testing translation service...');
+    await translationService.testConnection();
+    console.log('Translation service ready');
     
     updateStatus('LISTENING');
     
@@ -302,7 +381,16 @@ async function stopRecording() {
       audioMixer = null;
     }
     
-    // TODO: Close WebSocket connections
+    // Close WebSocket connections
+    if (deepgramClient) {
+      deepgramClient.stop();
+      deepgramClient = null;
+    }
+    
+    // Clear translation service
+    if (translationService) {
+      translationService = null;
+    }
     
     // Clear translation display
     translationDisplay.clear();
