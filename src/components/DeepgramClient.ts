@@ -19,6 +19,9 @@ export class DeepgramClient {
   private reconnectAttempts: number = 0
   private maxReconnectAttempts: number = 2
   private reconnectDelay: number = 1000 // Start with 1 second
+  private pendingUtterance: string = ''
+  private flushTimer: number | null = null
+  private readonly QUIET_FLUSH_MS = 1500
 
   constructor(apiKey: string) {
     this.apiKey = apiKey
@@ -37,10 +40,10 @@ export class DeepgramClient {
         language: 'en-US',
         smart_format: true,
         punctuate: true,
-        interim_results: true, // Enable interim results for better responsiveness
-        endpointing: 300, // Send final results after 300ms of silence
-        utterance_end_ms: 1000, // Complete utterance after 1 second of silence
-        vad_events: true, // Enable voice activity detection events
+        interim_results: true,          // keep interims for our buffer
+        endpointing: 1200,              // require ~1.2s silence to emit a final result
+        utterance_end_ms: 2000,         // close an utterance after ~2s silence
+        vad_events: true,
         // Remove encoding/sample_rate for compressed audio formats
         // Deepgram will auto-detect the format
       }
@@ -119,41 +122,53 @@ export class DeepgramClient {
   private handleMessage(data: string) {
     try {
       const message = JSON.parse(data)
-      console.log('Parsed Deepgram message:', message)
-      
+
       if (message.type === 'Results') {
         const result = message.channel?.alternatives?.[0]
-        
         if (result && result.transcript) {
           if (message.is_final) {
-            console.log('Final transcript:', result.transcript)
-            
-            if (this.onTranscriptCallback) {
-              this.onTranscriptCallback({
-                text: result.transcript,
-                confidence: result.confidence,
-                isFinal: true
-              })
+            // accumulate finals into a single utterance
+            const piece = String(result.transcript).trim()
+            if (piece.length) {
+              this.pendingUtterance = this.pendingUtterance
+                ? `${this.pendingUtterance} ${piece}`
+                : piece
             }
+            // restart quiet flush timer as a fallback in case we never see UtteranceEnd
+            this.restartQuietFlushTimer()
           } else {
-            // Log interim results for debugging but don't process them
-            console.log('Interim transcript:', result.transcript)
+            // ignore interims (we log them for debugging only)
+            // console.log('Interim:', result.transcript)
           }
-        } else {
-          console.log('Results message with no transcript:', message)
         }
-      } else if (message.type === 'Metadata') {
-        console.log('Deepgram metadata:', message)
-      } else if (message.type === 'SpeechStarted') {
-        console.log('Speech started')
       } else if (message.type === 'UtteranceEnd') {
-        console.log('Utterance ended')
-      } else {
-        console.log('Unknown message type:', message.type, message)
+        // primary path: flush on Deepgram's utterance boundary
+        this.flushPendingUtterance()
+      } else if (message.type === 'SpeechStarted' || message.type === 'Metadata') {
+        // ignore
       }
     } catch (error) {
       console.error('Error parsing Deepgram message:', error, 'Raw data:', data)
     }
+  }
+
+  private flushPendingUtterance() {
+    const text = this.pendingUtterance.trim()
+    if (text && this.onTranscriptCallback) {
+      this.onTranscriptCallback({ text, confidence: 1.0, isFinal: true })
+    }
+    this.pendingUtterance = ''
+    if (this.flushTimer) {
+      clearTimeout(this.flushTimer)
+      this.flushTimer = null
+    }
+  }
+
+  private restartQuietFlushTimer() {
+    if (this.flushTimer) clearTimeout(this.flushTimer)
+    this.flushTimer = setTimeout(() => {
+      this.flushPendingUtterance()
+    }, this.QUIET_FLUSH_MS) as unknown as number
   }
 
   // Send audio data to Deepgram

@@ -18,7 +18,10 @@ export class TranslationService {
   // Translate text using Google Translate v2 API
   async translateText(text: string, sourceLanguage: string, targetLanguage: string): Promise<string | null> {
     try {
-      if (!text || text.trim().length === 0) {
+      const clean = text.replace(/\s+/g, ' ').trim()
+      if (!clean) return ''
+      
+      if (!clean || clean.length === 0) {
         return null
       }
 
@@ -32,7 +35,7 @@ export class TranslationService {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          q: text,
+          q: clean,
           source: sourceLanguage,
           target: targetLanguage,
           format: 'text'

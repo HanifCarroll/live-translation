@@ -114,6 +114,8 @@ export function useRecording(options: UseRecordingOptions): UseRecordingReturn {
       
       deepgramClientRef.current.onTranscript(async (result: TranscriptResult) => {
         try {
+          if (!result.text || !result.text.trim()) return
+          
           const translatedText = await translationServiceRef.current!.translateForDirection(
             result.text, 
             translationDirection
