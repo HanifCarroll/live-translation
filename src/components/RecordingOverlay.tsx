@@ -4,31 +4,32 @@ import { TranslationLine } from './TranslationDisplay'
 interface RecordingOverlayProps {
   isVisible: boolean
   translationLines: TranslationLine[]
-  onClose: () => void
+  onStop: () => void
 }
 
 export const RecordingOverlay = memo(function RecordingOverlay({
   isVisible,
   translationLines,
-  onClose
+  onStop
 }: RecordingOverlayProps) {
   if (!isVisible) return null
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-90 z-50 flex items-center justify-center">
-      <div className="max-w-4xl w-full mx-auto p-8">
+    <div className="fixed inset-0 bg-black bg-opacity-90 z-50 flex flex-col">
+      {/* Header with title and stop button */}
+      <div className="flex items-center justify-between p-8">
+        <h2 className="text-3xl font-bold text-white">Live Translation</h2>
         <button
-          onClick={onClose}
-          className="absolute top-8 right-8 text-white hover:text-gray-300 transition-colors"
-          aria-label="Close fullscreen"
+          onClick={onStop}
+          className="px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors"
         >
-          <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-          </svg>
+          Stop Recording
         </button>
-        
-        <div className="text-center">
-          <h2 className="text-3xl font-bold text-white mb-8">Live Translation</h2>
+      </div>
+      
+      {/* Translation content */}
+      <div className="flex-1 flex items-center justify-center px-8 pb-16">
+        <div className="max-w-4xl w-full text-center">
           <div className="space-y-6">
             {translationLines.length === 0 ? (
               <p className="text-gray-400 text-xl">Listening...</p>
@@ -38,8 +39,8 @@ export const RecordingOverlay = memo(function RecordingOverlay({
                   key={line.id}
                   className={`text-white ${
                     index === translationLines.length - 1 
-                      ? 'text-4xl font-medium new-line' 
-                      : 'text-2xl opacity-60'
+                      ? 'text-5xl font-medium new-line' 
+                      : 'text-3xl opacity-60'
                   }`}
                 >
                   {line.text}

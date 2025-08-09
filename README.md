@@ -1,30 +1,79 @@
-# React + TypeScript + Vite
+# Live Translation App
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A real-time speech translation desktop app built with Electron, React, and TypeScript. Translate live audio between English and Spanish with secure API key storage.
 
-Currently, two official plugins are available:
+## Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/README.md) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- **Real-time translation** between English ↔ Spanish
+- **Dual audio input**: Microphone + system audio (with virtual audio setup)
+- **Live transcription** with translation overlay
+- **Secure API storage** using OS-level encryption
+- **Session recordings** saved as text files
+- **Dark/light theme** support
+- **Fullscreen overlay** for presentations
 
-## Expanding the ESLint configuration
+## Quick Setup
 
-If you are developing a production application, we recommend updating the configuration to enable type aware lint rules:
+1. **Clone and install**:
+   ```bash
+   git clone https://github.com/HanifCarroll/live-translation
+   cd live-translation
+   npm install
+   ```
 
-- Configure the top-level `parserOptions` property like this:
+2. **Run the app**:
+   ```bash
+   npm run dev
+   ```
 
-```js
-export default {
-  // other rules...
-  parserOptions: {
-    ecmaVersion: 'latest',
-    sourceType: 'module',
-    project: ['./tsconfig.json', './tsconfig.node.json'],
-    tsconfigRootDir: __dirname,
-  },
-}
+3. **Add API keys** (Settings → API Keys tab):
+   - **Deepgram API Key** - for speech-to-text
+   - **Google Translate API Key** - for translation
+
+4. **Start translating**!
+
+## API Keys Required
+
+### Deepgram (Speech-to-Text)
+- **Get it**: https://console.deepgram.com/
+- **Free tier**: 45,000 minutes/year
+- **Cost**: $0.0043/minute after free tier
+
+### Google Cloud Translate
+- **Get it**: https://console.cloud.google.com/ (enable Translate API)
+- **Free tier**: 500,000 characters/month  
+- **Cost**: $20/1M characters after free tier
+
+## Security
+
+API keys are stored securely using Electron's `safeStorage`:
+- **Encrypted** with your OS keychain (Windows Credential Manager, macOS Keychain, Linux Secret Service)
+- **Never stored in plain text**
+- **Isolated** from settings and other data
+
+## System Audio Setup
+
+To translate audio from other apps (Zoom, YouTube, etc.):
+
+**macOS**: Install [BlackHole](https://existential.audio/blackhole/)  
+**Windows**: Install [VB-Cable](https://vb-audio.com/Cable/)
+
+Then select the virtual device in Audio Input → "I have virtual audio installed"
+
+## Build for Production
+
+```bash
+npm run build
 ```
 
-- Replace `plugin:@typescript-eslint/recommended` to `plugin:@typescript-eslint/recommended-type-checked` or `plugin:@typescript-eslint/strict-type-checked`
-- Optionally add `plugin:@typescript-eslint/stylistic-type-checked`
-- Install [eslint-plugin-react](https://github.com/jsx-eslint/eslint-plugin-react) and add `plugin:react/recommended` & `plugin:react/jsx-runtime` to the `extends` list
+## Tech Stack
+
+- **Electron** - Desktop app framework
+- **React + TypeScript** - UI framework
+- **Vite** - Build tool
+- **Deepgram** - Speech-to-text API
+- **Google Translate** - Translation API
+
+## License
+
+MIT

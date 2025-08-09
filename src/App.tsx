@@ -6,12 +6,11 @@ import { ThemeProvider, useTheme } from './contexts/ThemeContext'
 import { useAudioDevices } from './hooks/useAudioDevices'
 import { useSettings } from './hooks/useSettings'
 import { useRecording, TranslationLine } from './hooks/useRecording'
-import { TranslationControls } from './components/TranslationControls'
-import { AudioControls } from './components/AudioControls'
-import { OutputSettings } from './components/OutputSettings'
-import { TranslationDisplay } from './components/TranslationDisplay'
 import { RecordingOverlay } from './components/RecordingOverlay'
 import { PostRecordingActions, TranscriptData } from './components/PostRecordingActions'
+import { CountdownOverlay } from './components/CountdownOverlay'
+import { SessionSetup } from './components/SessionSetup'
+import { StickyFooter } from './components/StickyFooter'
 import toast, { Toaster } from 'react-hot-toast'
 
 // Type declarations for Electron API
@@ -61,6 +60,7 @@ function AppContent() {
   
   const [translationLines, setTranslationLines] = useState<TranslationLine[]>([])
   const [showOverlay, setShowOverlay] = useState(false)
+  const [showCountdown, setShowCountdown] = useState(false)
   const [lastTranscript, setLastTranscript] = useState<TranscriptData | null>(null)
   const [viewingTranscript, setViewingTranscript] = useState(false)
   const [transcriptContent, setTranscriptContent] = useState<{ source: string; target: string } | null>(null)
@@ -156,11 +156,18 @@ function AppContent() {
   })
 
   const handleStartRecording = useCallback(async () => {
+    setShowCountdown(true)
+  }, [])
+
+  const handleCountdownComplete = useCallback(async () => {
     try {
+      setShowCountdown(false)
+      setShowOverlay(true)
       setAppState(prev => ({ ...prev, isRecording: true }))
       await startRecordingHook()
     } catch (error) {
       setAppState(prev => ({ ...prev, isRecording: false }))
+      setShowOverlay(false)
     }
   }, [startRecordingHook])
 
@@ -277,10 +284,15 @@ function AppContent() {
 
   return (
     <div className={`min-h-screen ${isDarkMode ? 'dark bg-gray-900' : 'bg-gray-50'}`}>
+      <CountdownOverlay
+        isVisible={showCountdown}
+        onComplete={handleCountdownComplete}
+      />
+
       <RecordingOverlay
         isVisible={showOverlay && appState.isRecording}
         translationLines={translationLines}
-        onClose={() => setShowOverlay(false)}
+        onStop={handleStartStop}
       />
 
       {/* Transcript Viewer Modal */}
@@ -348,32 +360,15 @@ function AppContent() {
         </div>
       )}
 
-      {/* Minimalist Header */}
+      {/* Minimal Header */}
       <header className={`${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} border-b`}>
-        <div className="max-w-6xl mx-auto px-6 py-4">
+        <div className="max-w-4xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
-            <h1 className={`text-xl font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+            <h1 className={`text-xl font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
               Live Translator
             </h1>
             
-            <div className="flex items-center space-x-4">
-              {/* Status Indicator */}
-              <div className="flex items-center space-x-2">
-                <div className={`w-2 h-2 rounded-full ${statusConfig.color} ${appState.isRecording ? 'pulse-dot' : ''}`}></div>
-                <span className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>{statusConfig.text}</span>
-              </div>
-              
-              {/* Settings Button */}
-              <button
-                onClick={() => setShowSettings(true)}
-                className={`p-2 rounded-md ${isDarkMode ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-600'} hover:bg-opacity-80`}
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                </svg>
-              </button>
-
+            <div className="flex items-center space-x-3">
               {/* Dark Mode Toggle */}
               <button
                 onClick={() => {
@@ -389,7 +384,7 @@ function AppContent() {
                     })
                   }
                 }}
-                className={`p-2 rounded-md transition-colors ${isDarkMode ? 'bg-gray-700 text-yellow-400' : 'bg-gray-100 text-gray-600'} hover:bg-opacity-80`}
+                className={`p-2 rounded-lg transition-colors ${isDarkMode ? 'bg-gray-700 text-yellow-400 hover:bg-gray-600' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
               >
                 {isDarkMode ? (
                   <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
@@ -401,12 +396,24 @@ function AppContent() {
                   </svg>
                 )}
               </button>
+
+              {/* Settings Button */}
+              <button
+                onClick={() => setShowSettings(true)}
+                className={`p-2 rounded-lg transition-colors ${isDarkMode ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+              </button>
             </div>
           </div>
         </div>
       </header>
 
-      <div className="max-w-6xl mx-auto px-6 py-8">
+      {/* Main Content */}
+      <div className="max-w-4xl mx-auto px-6 py-8 pb-32">
         {lastTranscript && !appState.isRecording && (
           <PostRecordingActions
             transcriptData={lastTranscript}
@@ -415,84 +422,48 @@ function AppContent() {
           />
         )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Settings Column */}
-          <div className="lg:col-span-2 space-y-6">
-            <TranslationControls
-              direction={appState.direction}
-              onDirectionChange={(direction) => setAppState(prev => ({ ...prev, direction }))}
-              disabled={appState.isRecording}
-            />
+        {/* Session Setup Card */}
+        <SessionSetup
+          direction={appState.direction}
+          onDirectionChange={(direction) => setAppState(prev => ({ ...prev, direction }))}
+          micDevices={micDevices}
+          systemDevices={systemDevices}
+          selectedMicId={appState.micDeviceId}
+          selectedSystemId={appState.systemDeviceId}
+          onMicChange={(deviceId) => setAppState(prev => ({ ...prev, micDeviceId: deviceId }))}
+          onSystemChange={(deviceId) => setAppState(prev => ({ ...prev, systemDeviceId: deviceId }))}
+          outputFolder={appState.outputFolder}
+          sessionName={appState.sessionName}
+          onFolderSelect={selectFolder}
+          onSessionNameChange={(name) => setAppState(prev => ({ ...prev, sessionName: name || generateSessionName() }))}
+          onExternalUrlOpen={openExternalUrl}
+          disabled={appState.isRecording}
+        />
 
-            <AudioControls
-              micDevices={micDevices}
-              systemDevices={systemDevices}
-              selectedMicId={appState.micDeviceId}
-              selectedSystemId={appState.systemDeviceId}
-              onMicChange={(deviceId) => setAppState(prev => ({ ...prev, micDeviceId: deviceId }))}
-              onSystemChange={(deviceId) => setAppState(prev => ({ ...prev, systemDeviceId: deviceId }))}
-              onExternalUrlOpen={openExternalUrl}
-              disabled={appState.isRecording}
-            />
-
-            <OutputSettings
-              outputFolder={appState.outputFolder}
-              sessionName={appState.sessionName}
-              onFolderSelect={selectFolder}
-              onSessionNameChange={(name) => setAppState(prev => ({ ...prev, sessionName: name || generateSessionName() }))}
-              disabled={appState.isRecording}
-            />
-
-            {/* Error Message */}
-            {errorMessage && !appState.isRecording && (
-              <div className={`px-4 py-3 rounded-md border ${
-                isDarkMode 
-                  ? 'bg-red-900/20 border-red-800 text-red-400' 
-                  : 'bg-red-50 border-red-200 text-red-700'
-              }`}>
-                <p className="text-sm">{errorMessage}</p>
-              </div>
-            )}
-
-            {/* Action Buttons */}
-            <div className="flex space-x-3">
-              <button
-                onClick={handleStartStop}
-                disabled={!canStart && !appState.isRecording}
-                className={`flex-1 py-3 px-4 rounded-md font-medium text-sm smooth-transition btn-minimal ${
-                  appState.isRecording
-                    ? 'bg-red-600 text-white hover:bg-red-700'
-                    : canStart
-                    ? 'bg-indigo-600 text-white hover:bg-indigo-700'
-                    : isDarkMode
-                      ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
-                      : 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                }`}
-              >
-                {appState.isRecording ? 'Stop Recording' : 'Start Recording'}
-              </button>
-              
-              {appState.isRecording && (
-                <button
-                  onClick={() => setShowOverlay(true)}
-                  className="px-4 py-3 bg-purple-600 text-white rounded-md hover:bg-purple-700 text-sm font-medium transition-colors"
-                >
-                  Show Fullscreen
-                </button>
-              )}
+        {/* Error Message */}
+        {errorMessage && !appState.isRecording && (
+          <div className={`mt-6 px-4 py-3 rounded-lg border ${
+            isDarkMode 
+              ? 'bg-red-900/20 border-red-800 text-red-400' 
+              : 'bg-red-50 border-red-200 text-red-700'
+          }`}>
+            <div className="flex items-center space-x-2">
+              <svg className="w-4 h-4 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+              </svg>
+              <p className="text-sm font-medium">{errorMessage}</p>
             </div>
           </div>
-
-          {/* Translation Display */}
-          <div className="lg:col-span-1">
-            <TranslationDisplay
-              translationLines={translationLines}
-              isRecording={appState.isRecording}
-              onShowFullscreen={() => setShowOverlay(true)}
-            />
-          </div>
-        </div>
+        )}
       </div>
+
+      {/* Sticky Footer */}
+      <StickyFooter
+        status={appState.status}
+        isRecording={appState.isRecording}
+        canStart={canStart}
+        onStartStop={handleStartStop}
+      />
 
       {/* Settings Modal */}
       <Settings
