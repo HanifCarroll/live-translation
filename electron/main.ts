@@ -1,28 +1,20 @@
-import { app, BrowserWindow, ipcMain, dialog, session, shell } from 'electron'
-import { createRequire } from 'node:module'
+import { app, BrowserWindow, ipcMain, dialog, session, shell, safeStorage } from 'electron'
+// import { createRequire } from 'node:module'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
-import fs from 'node:fs'
+import { promises as fs, createWriteStream, WriteStream } from 'node:fs'
 import { config as dotenvConfig } from 'dotenv'
+import { z } from 'zod'
 
-const require = createRequire(import.meta.url)
+// const require = createRequire(import.meta.url)
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
 // Load environment variables from .env file
 dotenvConfig({ path: path.join(__dirname, '..', '.env') })
 
 // The built directory structure
-//
-// ├─┬─┬ dist
-// │ │ └── index.html
-// │ │
-// │ ├─┬ dist-electron
-// │ │ ├── main.js
-// │ │ └── preload.mjs
-// │
 process.env.APP_ROOT = path.join(__dirname, '..')
 
-// 🚧 Use ['ENV_NAME'] avoid vite:define plugin - Vite@2.x
 export const VITE_DEV_SERVER_URL = process.env['VITE_DEV_SERVER_URL']
 export const MAIN_DIST = path.join(process.env.APP_ROOT, 'dist-electron')
 export const RENDERER_DIST = path.join(process.env.APP_ROOT, 'dist')
@@ -31,251 +23,33 @@ process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL ? path.join(process.env.APP_ROOT, 
 
 let win: BrowserWindow | null
 
-function createWindow() {
-  win = new BrowserWindow({
-    width: 800,
-    height: 600,
-    icon: path.join(process.env.VITE_PUBLIC, 'electron-vite.svg'),
-    webPreferences: {
-      preload: path.join(__dirname, 'preload.mjs'),
-      nodeIntegration: false,
-      contextIsolation: true,
-      webSecurity: false, // Temporarily disable for testing
-    },
+// Validation schemas
+const FilePathSchema = z.string().min(1).max(1000).refine((path) => {
+  // Prevent directory traversal
+  return !path.includes('..') && !path.includes('~')
+}, 'Invalid file path')
+
+const SessionNameSchema = z.string().min(1).max(100).regex(/^[a-zA-Z0-9\-_]+$/, 'Invalid session name')
+
+const AppSettingsSchema = z.object({
+  apiKeys: z.object({
+    deepgram: z.string(),
+    google: z.string()
+  }),
+  defaults: z.object({
+    translationDirection: z.enum(['en-es', 'es-en']),
+    outputFolder: z.string(),
+    micDeviceId: z.string(),
+    systemDeviceId: z.string(),
+    sessionNamePattern: z.string().max(200)
+  }),
+  ui: z.object({
+    theme: z.enum(['light', 'dark', 'system']),
+    translationDisplayCount: z.number().min(1).max(20)
   })
-
-  // Open the DevTools in development
-  if (VITE_DEV_SERVER_URL) {
-    win.webContents.openDevTools()
-  }
-
-  if (VITE_DEV_SERVER_URL) {
-    win.loadURL(VITE_DEV_SERVER_URL)
-  } else {
-    win.loadFile(path.join(RENDERER_DIST, 'index.html'))
-  }
-}
-
-// Quit when all windows are closed, except on macOS. There, it's common
-// for applications and their menu bar to stay active until the user quits
-// explicitly with Cmd + Q.
-app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') {
-    app.quit()
-    win = null
-  }
 })
 
-app.on('activate', () => {
-  // On OS X it's common to re-create a window in the app when the
-  // dock icon is clicked and there are no other windows open.
-  if (BrowserWindow.getAllWindows().length === 0) {
-    createWindow()
-  }
-})
-
-app.whenReady().then(() => {
-  // Disable CSP headers in development for Deepgram API access
-  if (!app.isPackaged) {
-    const ses = session.defaultSession
-    ses.webRequest.onHeadersReceived((details, callback) => {
-      const headers = details.responseHeaders || {}
-      delete headers['content-security-policy']
-      delete headers['Content-Security-Policy']
-      callback({ responseHeaders: headers })
-    })
-  }
-
-  createWindow()
-})
-
-// File handles for transcript files
-interface TranscriptFiles {
-  en: fs.WriteStream | null
-  es: fs.WriteStream | null
-  folderPath: string | null
-}
-
-let transcriptFiles: TranscriptFiles = {
-  en: null,
-  es: null,
-  folderPath: null
-}
-
-// IPC Handlers
-
-// Handle folder selection dialog
-ipcMain.handle('dialog:selectFolder', async () => {
-  const result = await dialog.showOpenDialog({
-    properties: ['openDirectory'],
-    title: 'Select Output Folder for Transcripts',
-    buttonLabel: 'Select Folder'
-  })
-  
-  if (!result.canceled && result.filePaths.length > 0) {
-    return result.filePaths[0]
-  }
-  return null
-})
-
-// Handle transcript file creation
-ipcMain.handle('files:createTranscripts', async (event, folderPath: string, sessionName: string = 'transcript') => {
-  try {
-    // Close any existing file streams
-    if (transcriptFiles.en) {
-      transcriptFiles.en.end()
-      transcriptFiles.en = null
-    }
-    if (transcriptFiles.es) {
-      transcriptFiles.es.end()
-      transcriptFiles.es = null
-    }
-    
-    // Create new file streams (overwrite mode) with custom session name
-    const enPath = path.join(folderPath, `${sessionName}-en.txt`)
-    const esPath = path.join(folderPath, `${sessionName}-es.txt`)
-    
-    transcriptFiles.en = fs.createWriteStream(enPath, { flags: 'w', encoding: 'utf8' })
-    transcriptFiles.es = fs.createWriteStream(esPath, { flags: 'w', encoding: 'utf8' })
-    transcriptFiles.folderPath = folderPath
-    
-    console.log('Created transcript files in:', folderPath)
-    return { success: true, folderPath }
-  } catch (error: any) {
-    console.error('Error creating transcript files:', error)
-    return { success: false, error: error.message }
-  }
-})
-
-// Handle appending text to transcript files
-ipcMain.handle('files:appendTranscript', async (event, filename: string, text: string) => {
-  try {
-    const file = filename === 'en' ? transcriptFiles.en : transcriptFiles.es
-    if (file) {
-      file.write(text + '\n')
-      return { success: true }
-    }
-    return { success: false, error: 'File stream not initialized' }
-  } catch (error: any) {
-    console.error('Error appending to transcript:', error)
-    return { success: false, error: error.message }
-  }
-})
-
-// Handle closing transcript files
-ipcMain.handle('files:closeTranscripts', async () => {
-  try {
-    if (transcriptFiles.en) {
-      transcriptFiles.en.end()
-      transcriptFiles.en = null
-    }
-    if (transcriptFiles.es) {
-      transcriptFiles.es.end()
-      transcriptFiles.es = null
-    }
-    transcriptFiles.folderPath = null
-    return { success: true }
-  } catch (error: any) {
-    console.error('Error closing transcript files:', error)
-    return { success: false, error: error.message }
-  }
-})
-
-// Handle getting API keys
-ipcMain.handle('config:getApiKeys', async () => {
-  console.log('Getting API keys...')
-  console.log('DEEPGRAM_API_KEY:', process.env.DEEPGRAM_API_KEY ? 'Found' : 'Missing')
-  console.log('GOOGLE_API_KEY:', process.env.GOOGLE_API_KEY ? 'Found' : 'Missing')
-  
-  return {
-    deepgramApiKey: process.env.DEEPGRAM_API_KEY,
-    googleApiKey: process.env.GOOGLE_API_KEY
-  }
-})
-
-// Handle opening system settings
-ipcMain.handle('system:openSettings', async () => {
-  try {
-    if (process.platform === 'darwin') {
-      // macOS: Open Privacy & Security > Microphone settings
-      await shell.openExternal('x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone')
-    } else if (process.platform === 'win32') {
-      // Windows: Open Settings > Privacy > Microphone
-      await shell.openExternal('ms-settings:privacy-microphone')
-    } else {
-      // Linux: Try to open system settings
-      await shell.openExternal('gnome-control-center sound')
-    }
-    return { success: true }
-  } catch (error: any) {
-    console.error('Error opening system settings:', error)
-    return { success: false, error: error.message }
-  }
-})
-
-// Handle getting current working directory
-ipcMain.handle('system:getCurrentDirectory', async () => {
-  try {
-    return { success: true, path: process.cwd() }
-  } catch (error: any) {
-    console.error('Error getting current directory:', error)
-    return { success: false, error: error.message }
-  }
-})
-
-// Handle opening external URLs
-ipcMain.handle('system:openExternalUrl', async (event, url: string) => {
-  try {
-    await shell.openExternal(url)
-    return { success: true }
-  } catch (error: any) {
-    console.error('Error opening external URL:', error)
-    return { success: false, error: error.message }
-  }
-})
-
-// Read transcript file
-ipcMain.handle('files:readTranscript', async (event, filepath: string) => {
-  try {
-    const content = fs.readFileSync(filepath, 'utf-8')
-    return { success: true, content }
-  } catch (error: any) {
-    console.error('Error reading transcript file:', error)
-    return { success: false, error: error.message }
-  }
-})
-
-// Delete transcript file
-ipcMain.handle('files:deleteTranscript', async (event, filepath: string) => {
-  try {
-    fs.unlinkSync(filepath)
-    return { success: true }
-  } catch (error: any) {
-    console.error('Error deleting transcript file:', error)
-    return { success: false, error: error.message }
-  }
-})
-
-// Settings management
-const settingsFilePath = path.join(app.getPath('userData'), 'settings.json')
-
-interface AppSettings {
-  apiKeys: {
-    deepgram: string
-    google: string
-  }
-  defaults: {
-    translationDirection: 'en-es' | 'es-en'
-    outputFolder: string
-    micDeviceId: string
-    systemDeviceId: string
-    sessionNamePattern: string
-  }
-  ui: {
-    theme: 'light' | 'dark' | 'system'
-    translationDisplayCount: number
-  }
-}
+type AppSettings = z.infer<typeof AppSettingsSchema>
 
 const defaultSettings: AppSettings = {
   apiKeys: {
@@ -295,25 +69,126 @@ const defaultSettings: AppSettings = {
   }
 }
 
-// Load settings
-function loadSettings(): AppSettings {
-  try {
-    if (fs.existsSync(settingsFilePath)) {
-      const settingsData = fs.readFileSync(settingsFilePath, 'utf-8')
-      const savedSettings = JSON.parse(settingsData)
-      // Merge with defaults to handle new settings
-      return { ...defaultSettings, ...savedSettings }
-    }
-  } catch (error) {
-    console.error('Error loading settings:', error)
+function createWindow() {
+  win = new BrowserWindow({
+    width: 1200,
+    height: 800,
+    minWidth: 800,
+    minHeight: 600,
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.mjs'),
+      nodeIntegration: false,
+      contextIsolation: true,
+      webSecurity: true, // Enable web security
+      allowRunningInsecureContent: false,
+      experimentalFeatures: false
+    },
+  })
+
+  // Set CSP headers for security
+  session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
+    callback({
+      responseHeaders: {
+        ...details.responseHeaders,
+        'Content-Security-Policy': ['default-src \'self\' \'unsafe-inline\'; script-src \'self\' \'unsafe-inline\' \'unsafe-eval\'; style-src \'self\' \'unsafe-inline\';']
+      }
+    })
+  })
+
+  // Open the DevTools in development
+  if (VITE_DEV_SERVER_URL) {
+    win.webContents.openDevTools()
   }
-  return defaultSettings
+
+  if (VITE_DEV_SERVER_URL) {
+    win.loadURL(VITE_DEV_SERVER_URL)
+  } else {
+    win.loadFile(path.join(RENDERER_DIST, 'index.html'))
+  }
 }
 
-// Save settings
-function saveSettings(settings: AppSettings): boolean {
+// File stream management
+interface TranscriptStreams {
+  en: WriteStream | null
+  es: WriteStream | null
+}
+
+const transcriptStreams: TranscriptStreams = { en: null, es: null }
+
+// Cleanup function
+async function cleanup() {
+  if (transcriptStreams.en) {
+    transcriptStreams.en.end()
+    transcriptStreams.en = null
+  }
+  if (transcriptStreams.es) {
+    transcriptStreams.es.end()
+    transcriptStreams.es = null
+  }
+}
+
+// App event handlers
+app.whenReady().then(() => {
+  createWindow()
+
+  app.on('activate', function () {
+    if (BrowserWindow.getAllWindows().length === 0) createWindow()
+  })
+})
+
+app.on('window-all-closed', async () => {
+  await cleanup()
+  if (process.platform !== 'darwin') app.quit()
+})
+
+app.on('before-quit', cleanup)
+
+// Secure settings management
+const settingsFilePath = path.join(app.getPath('userData'), 'settings.json')
+const keyFilePath = path.join(app.getPath('userData'), 'keys.dat')
+
+async function loadSettings(): Promise<AppSettings> {
   try {
-    fs.writeFileSync(settingsFilePath, JSON.stringify(settings, null, 2))
+    const settingsData = await fs.readFile(settingsFilePath, 'utf-8')
+    const rawSettings = JSON.parse(settingsData)
+    const validatedSettings = AppSettingsSchema.parse(rawSettings)
+    
+    // Load encrypted API keys if available
+    if (safeStorage.isEncryptionAvailable()) {
+      try {
+        const encryptedKeys = await fs.readFile(keyFilePath)
+        const decryptedKeys = safeStorage.decryptString(encryptedKeys)
+        const keys = JSON.parse(decryptedKeys)
+        validatedSettings.apiKeys = keys
+      } catch (error) {
+        console.log('No encrypted keys found, using settings keys')
+      }
+    }
+    
+    return { ...defaultSettings, ...validatedSettings }
+  } catch (error) {
+    console.error('Error loading settings:', error)
+    return defaultSettings
+  }
+}
+
+async function saveSettings(settings: AppSettings): Promise<boolean> {
+  try {
+    const validatedSettings = AppSettingsSchema.parse(settings)
+    
+    // Save API keys securely if safeStorage is available
+    if (safeStorage.isEncryptionAvailable() && (validatedSettings.apiKeys.deepgram || validatedSettings.apiKeys.google)) {
+      const keysData = JSON.stringify(validatedSettings.apiKeys)
+      const encryptedKeys = safeStorage.encryptString(keysData)
+      await fs.writeFile(keyFilePath, encryptedKeys)
+      
+      // Remove keys from main settings file
+      const settingsToSave = { ...validatedSettings, apiKeys: { deepgram: '', google: '' } }
+      await fs.writeFile(settingsFilePath, JSON.stringify(settingsToSave, null, 2))
+    } else {
+      await fs.writeFile(settingsFilePath, JSON.stringify(validatedSettings, null, 2))
+    }
+    
     return true
   } catch (error) {
     console.error('Error saving settings:', error)
@@ -321,10 +196,198 @@ function saveSettings(settings: AppSettings): boolean {
   }
 }
 
-// Get settings
+// IPC handlers with validation
+ipcMain.handle('dialog:selectFolder', async () => {
+  try {
+    const result = await dialog.showOpenDialog({
+      properties: ['openDirectory'],
+      title: 'Select Output Folder for Transcripts',
+      buttonLabel: 'Select Folder'
+    })
+    
+    if (!result.canceled && result.filePaths.length > 0) {
+      const folderPath = result.filePaths[0]
+      FilePathSchema.parse(folderPath) // Validate path
+      return folderPath
+    }
+    return null
+  } catch (error) {
+    console.error('Error in selectFolder:', error)
+    throw new Error('Failed to select folder')
+  }
+})
+
+ipcMain.handle('files:createTranscripts', async (_event, folderPath: string, sessionName: string) => {
+  try {
+    // Validate inputs
+    FilePathSchema.parse(folderPath)
+    SessionNameSchema.parse(sessionName)
+    
+    // Close any existing streams
+    await cleanup()
+    
+    const enPath = path.join(folderPath, `${sessionName}-en.txt`)
+    const esPath = path.join(folderPath, `${sessionName}-es.txt`)
+    
+    // Ensure paths are within the selected folder (security check)
+    if (!enPath.startsWith(folderPath) || !esPath.startsWith(folderPath)) {
+      throw new Error('Invalid file paths')
+    }
+    
+    transcriptStreams.en = createWriteStream(enPath)
+    transcriptStreams.es = createWriteStream(esPath)
+    
+    return { success: true, folderPath }
+  } catch (error: any) {
+    console.error('Error creating transcripts:', error)
+    return { success: false, error: error.message }
+  }
+})
+
+ipcMain.handle('files:appendTranscript', async (_event, filename: string, text: string) => {
+  try {
+    // Validate inputs
+    z.enum(['en', 'es']).parse(filename)
+    z.string().max(10000).parse(text) // Limit text size
+    
+    const stream = filename === 'en' ? transcriptStreams.en : transcriptStreams.es
+    if (stream && stream.writable) {
+      return new Promise<{ success: boolean; error?: string }>((resolve) => {
+        stream.write(text + '\n', (error) => {
+          if (error) {
+            console.error('Error writing to transcript:', error)
+            resolve({ success: false, error: error.message })
+          } else {
+            resolve({ success: true })
+          }
+        })
+      })
+    } else {
+      return { success: false, error: 'Stream not available' }
+    }
+  } catch (error: any) {
+    console.error('Error appending to transcript:', error)
+    return { success: false, error: error.message }
+  }
+})
+
+ipcMain.handle('files:closeTranscripts', async () => {
+  try {
+    await cleanup()
+    return { success: true }
+  } catch (error: any) {
+    console.error('Error closing transcripts:', error)
+    return { success: false, error: error.message }
+  }
+})
+
+ipcMain.handle('config:getApiKeys', async () => {
+  try {
+    console.log('Getting API keys...')
+    
+    const settings = await loadSettings()
+    let deepgramApiKey = settings.apiKeys.deepgram
+    let googleApiKey = settings.apiKeys.google
+    
+    // Fall back to environment variables if not in settings
+    if (!deepgramApiKey) {
+      deepgramApiKey = process.env.DEEPGRAM_API_KEY || 'your_deepgram_api_key_here'
+    }
+    if (!googleApiKey) {
+      googleApiKey = process.env.GOOGLE_API_KEY || 'your_google_api_key_here'
+    }
+    
+    console.log('DEEPGRAM_API_KEY:', deepgramApiKey !== 'your_deepgram_api_key_here' ? 'Found' : 'Missing')
+    console.log('GOOGLE_API_KEY:', googleApiKey !== 'your_google_api_key_here' ? 'Found' : 'Missing')
+    
+    return { deepgramApiKey, googleApiKey }
+  } catch (error: any) {
+    console.error('Error getting API keys:', error)
+    return { deepgramApiKey: '', googleApiKey: '' }
+  }
+})
+
+ipcMain.handle('system:openSettings', async () => {
+  try {
+    if (process.platform === 'darwin') {
+      await shell.openExternal('x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone')
+    } else if (process.platform === 'win32') {
+      await shell.openExternal('ms-settings:privacy-microphone')
+    } else {
+      // Linux - open sound settings
+      await shell.openExternal('gnome-control-center sound input')
+    }
+    return { success: true }
+  } catch (error: any) {
+    console.error('Error opening system settings:', error)
+    return { success: false, error: error.message }
+  }
+})
+
+ipcMain.handle('system:getCurrentDirectory', async () => {
+  try {
+    return { success: true, path: process.cwd() }
+  } catch (error: any) {
+    console.error('Error getting current directory:', error)
+    return { success: false, error: error.message }
+  }
+})
+
+ipcMain.handle('system:openExternalUrl', async (_event, url: string) => {
+  try {
+    // Validate URL for security
+    const urlSchema = z.string().url().refine((url) => {
+      return url.startsWith('https://') || url.startsWith('http://') || url.startsWith('x-apple.systempreferences:')
+    }, 'Invalid URL protocol')
+    
+    urlSchema.parse(url)
+    await shell.openExternal(url)
+    return { success: true }
+  } catch (error: any) {
+    console.error('Error opening external URL:', error)
+    return { success: false, error: error.message }
+  }
+})
+
+ipcMain.handle('files:readTranscript', async (_event, filepath: string) => {
+  try {
+    // Validate and sanitize file path
+    FilePathSchema.parse(filepath)
+    
+    // Ensure file is a .txt file and within user data or selected folder
+    if (!filepath.endsWith('.txt')) {
+      throw new Error('Only .txt files are allowed')
+    }
+    
+    const content = await fs.readFile(filepath, 'utf-8')
+    return { success: true, content }
+  } catch (error: any) {
+    console.error('Error reading transcript file:', error)
+    return { success: false, error: error.message }
+  }
+})
+
+ipcMain.handle('files:deleteTranscript', async (_event, filepath: string) => {
+  try {
+    // Validate and sanitize file path
+    FilePathSchema.parse(filepath)
+    
+    // Ensure file is a .txt file
+    if (!filepath.endsWith('.txt')) {
+      throw new Error('Only .txt files can be deleted')
+    }
+    
+    await fs.unlink(filepath)
+    return { success: true }
+  } catch (error: any) {
+    console.error('Error deleting transcript file:', error)
+    return { success: false, error: error.message }
+  }
+})
+
 ipcMain.handle('settings:get', async () => {
   try {
-    const settings = loadSettings()
+    const settings = await loadSettings()
     return { success: true, settings }
   } catch (error: any) {
     console.error('Error getting settings:', error)
@@ -332,12 +395,12 @@ ipcMain.handle('settings:get', async () => {
   }
 })
 
-// Update settings
-ipcMain.handle('settings:update', async (event, newSettings: Partial<AppSettings>) => {
+ipcMain.handle('settings:update', async (_event, newSettings: Partial<AppSettings>) => {
   try {
-    const currentSettings = loadSettings()
+    const currentSettings = await loadSettings()
     const updatedSettings = { ...currentSettings, ...newSettings }
-    const saved = saveSettings(updatedSettings)
+    const saved = await saveSettings(updatedSettings)
+    
     if (saved) {
       return { success: true, settings: updatedSettings }
     } else {
@@ -346,31 +409,5 @@ ipcMain.handle('settings:update', async (event, newSettings: Partial<AppSettings
   } catch (error: any) {
     console.error('Error updating settings:', error)
     return { success: false, error: error.message }
-  }
-})
-
-// Modified getApiKeys to check settings first, then env vars
-ipcMain.handle('config:getApiKeys', async () => {
-  console.log('Getting API keys...')
-  
-  // First try to get from settings
-  const settings = loadSettings()
-  let deepgramApiKey = settings.apiKeys.deepgram
-  let googleApiKey = settings.apiKeys.google
-  
-  // Fall back to environment variables if not in settings
-  if (!deepgramApiKey) {
-    deepgramApiKey = process.env.DEEPGRAM_API_KEY || 'your_deepgram_api_key_here'
-  }
-  if (!googleApiKey) {
-    googleApiKey = process.env.GOOGLE_API_KEY || 'your_google_api_key_here'
-  }
-  
-  console.log('DEEPGRAM_API_KEY:', deepgramApiKey !== 'your_deepgram_api_key_here' ? 'Found' : 'Missing')
-  console.log('GOOGLE_API_KEY:', googleApiKey !== 'your_google_api_key_here' ? 'Found' : 'Missing')
-  
-  return {
-    deepgramApiKey,
-    googleApiKey
   }
 })

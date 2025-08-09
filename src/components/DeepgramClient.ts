@@ -46,7 +46,12 @@ export class DeepgramClient {
       }
 
       const config = { ...defaultOptions, ...options }
-      const params = new URLSearchParams(config)
+      const params = new URLSearchParams()
+      
+      // Convert config object to URLSearchParams
+      Object.entries(config).forEach(([key, value]) => {
+        params.append(key, String(value))
+      })
       
       const wsUrl = `wss://api.deepgram.com/v1/listen?${params.toString()}`
       
