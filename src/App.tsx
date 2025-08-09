@@ -37,8 +37,6 @@ interface TranslationLine {
 }
 
 function App() {
-  console.log('App function called')
-  
   const [appState, setAppState] = useState<AppState>({
     direction: 'en-es',
     micDeviceId: null,
@@ -74,9 +72,6 @@ function App() {
 
   // Initialize devices and session name on component mount
   useEffect(() => {
-    console.log('App component mounted')
-    console.log('electronAPI available:', !!window.electronAPI)
-    
     initializeDevices()
     initializeSessionName()
     initializeOutputFolder()
@@ -180,8 +175,6 @@ function App() {
         throw new Error(`Failed to create transcript files: ${result.error}`)
       }
       
-      console.log('Recording started')
-      
       // Initialize audio capture
       audioMixerRef.current = new AudioMixer()
       await audioMixerRef.current.initialize()
@@ -190,12 +183,10 @@ function App() {
       await audioMixerRef.current.connectMicrophoneStream(appState.micDeviceId!)
       
       if (appState.systemDeviceId) {
-        console.log('Connecting system audio stream...')
         await audioMixerRef.current.connectSystemStream(appState.systemDeviceId)
       }
       
       const mixedStream = audioMixerRef.current.getMixedStream()
-      console.log('Audio mixing setup complete')
       
       // Get API keys
       const apiKeys = await window.electronAPI.getApiKeys()
@@ -224,8 +215,6 @@ function App() {
       })
       
       deepgramClientRef.current.onTranscript(async (result: TranscriptResult) => {
-        console.log('Received transcript:', result.text)
-        
         try {
           const translatedText = await translationServiceRef.current!.translateForDirection(
             result.text, 
