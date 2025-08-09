@@ -164,11 +164,17 @@ export function useRecording(options: UseRecordingOptions): UseRecordingReturn {
       
       // Check if still valid (user might have stopped during initialization)
       if (!deepgramClientRef.current || !audioMixerRef.current || !translationServiceRef.current) {
-        throw new Error('CANCELLED')
+        // Clean return - user cancelled, no error needed
+        return
       }
       
       deepgramClientRef.current.startRecording()
       audioMixerRef.current.mediaRecorder = await audioMixerRef.current.setupDeepgramStreaming(deepgramClientRef.current)
+      
+      // Check again before final async operation
+      if (!deepgramClientRef.current || !audioMixerRef.current || !translationServiceRef.current) {
+        return
+      }
       
       await translationServiceRef.current.testConnection()
       onStatusChange('LISTENING')
@@ -176,10 +182,7 @@ export function useRecording(options: UseRecordingOptions): UseRecordingReturn {
     } catch (error: any) {
       console.error('Error starting recording:', error)
       onStatusChange('ERROR')
-      // Don't show toast for user cancellation
-      if (error?.message !== 'CANCELLED') {
-        toast.error(`Failed to start recording: ${error.message}`)
-      }
+      toast.error(`Failed to start recording: ${error.message}`)
       await cleanup()
       throw error
     }

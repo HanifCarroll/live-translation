@@ -203,10 +203,7 @@ function AppContent() {
     } catch (error: any) {
       setAppState((prev) => ({ ...prev, isRecording: false }));
       setUiState(prev => ({ ...prev, showOverlay: false }));
-      // Don't show error for user cancellation
-      if (error?.message !== 'CANCELLED') {
-        console.error('Error during countdown completion:', error);
-      }
+      console.error('Error during countdown completion:', error);
     }
   }, [startRecordingHook]);
 
