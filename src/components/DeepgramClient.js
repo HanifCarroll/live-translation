@@ -29,7 +29,10 @@ class DeepgramClient {
         language: 'en-US',
         smart_format: true,
         punctuate: true,
-        interim_results: false, // Only final results as per PRD
+        interim_results: true, // Enable interim results for better responsiveness
+        endpointing: 300, // Send final results after 300ms of silence
+        utterance_end_ms: 1000, // Complete utterance after 1 second of silence
+        vad_events: true, // Enable voice activity detection events
         // Remove encoding/sample_rate for compressed audio formats
         // Deepgram will auto-detect the format
       };
@@ -107,7 +110,6 @@ class DeepgramClient {
         const result = message.channel?.alternatives?.[0];
         
         if (result && result.transcript) {
-          // Only process final results as per PRD requirements
           if (message.is_final) {
             console.log('Final transcript:', result.transcript);
             
@@ -119,6 +121,7 @@ class DeepgramClient {
               });
             }
           } else {
+            // Log interim results for debugging but don't process them
             console.log('Interim transcript:', result.transcript);
           }
         } else {

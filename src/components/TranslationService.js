@@ -13,7 +13,11 @@ class TranslationService {
         return null;
       }
 
-      const response = await fetch(this.baseUrl, {
+      // Build URL with API key as query parameter
+      const url = new URL(this.baseUrl);
+      url.searchParams.append('key', this.apiKey);
+
+      const response = await fetch(url.toString(), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -22,7 +26,6 @@ class TranslationService {
           q: text,
           source: sourceLanguage,
           target: targetLanguage,
-          key: this.apiKey,
           format: 'text'
         })
       });

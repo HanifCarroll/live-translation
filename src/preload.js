@@ -17,5 +17,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getApiKeys: () => ipcRenderer.invoke('config:getApiKeys'),
   
   // System Settings
-  openSystemSettings: () => ipcRenderer.invoke('system:openSettings')
+  openSystemSettings: () => ipcRenderer.invoke('system:openSettings'),
+  getCurrentDirectory: () => ipcRenderer.invoke('system:getCurrentDirectory'),
+  openExternalUrl: (url) => ipcRenderer.invoke('system:openExternalUrl', url)
 });

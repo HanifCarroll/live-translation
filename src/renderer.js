@@ -71,9 +71,8 @@ function initializeDirectionSelector() {
 function updateStartButtonState() {
   const startBtn = document.getElementById('start-stop-btn');
   
-  // Enable start button only if all required fields are set
+  // Enable start button only if required fields are set (system audio is now optional)
   const canStart = appState.micDeviceId && 
-                   appState.systemDeviceId && 
                    appState.outputFolder &&
                    !appState.isRecording;
   
@@ -86,8 +85,6 @@ function updateStartButtonState() {
   if (!appState.isRecording) {
     if (!appState.micDeviceId) {
       errorMessage = 'Please select a microphone';
-    } else if (!appState.systemDeviceId) {
-      errorMessage = 'Please select system audio device';
     } else if (!appState.outputFolder) {
       errorMessage = 'Please select output folder';
     }
@@ -136,6 +133,15 @@ async function initializeMicrophoneSelector() {
       micSelect.appendChild(option);
     });
     
+    // Auto-select the first available microphone (system default)
+    if (audioInputDevices.length > 0) {
+      const defaultMic = audioInputDevices[0];
+      micSelect.value = defaultMic.deviceId;
+      appState.micDeviceId = defaultMic.deviceId;
+      console.log('Auto-selected default microphone:', defaultMic.label || defaultMic.deviceId);
+      updateStartButtonState();
+    }
+    
     // Add change event listener
     micSelect.addEventListener('change', (e) => {
       appState.micDeviceId = e.target.value || null;
@@ -153,6 +159,7 @@ async function initializeMicrophoneSelector() {
         micSelect.value = currentValue;
         appState.micDeviceId = currentValue;
       }
+      // If no previous selection or it's no longer available, auto-selection already happened in initialization
     });
     
   } catch (error) {
@@ -187,17 +194,65 @@ async function initializeSystemAudioSelector() {
       option.textContent = device.label || `Audio Device ${systemSelect.options.length}`;
       
       // Highlight BlackHole or other virtual audio devices if found
-      if (device.label && (
-        device.label.toLowerCase().includes('blackhole') ||
-        device.label.toLowerCase().includes('virtual') ||
-        device.label.toLowerCase().includes('soundflower') ||
-        device.label.toLowerCase().includes('loopback')
-      )) {
-        option.textContent = `⭐ ${device.label}`;
+      if (device.label) {
+        const labelLower = device.label.toLowerCase();
+        const highlightKeywords = ['blackhole', 'virtual', 'soundflower', 'loopback'];
+        if (highlightKeywords.some(keyword => labelLower.includes(keyword))) {
+          option.textContent = `⭐ ${device.label}`;
+        }
       }
       
       systemSelect.appendChild(option);
     });
+    
+    // Auto-select system audio device with smarter logic
+    if (audioInputDevices.length > 0) {
+      // First, look for virtual audio devices (BlackHole, etc.)
+      const virtualKeywords = ['blackhole', 'virtual', 'soundflower', 'loopback'];
+      const virtualDevice = audioInputDevices.find(device => {
+        if (!device.label) return false;
+        const labelLower = device.label.toLowerCase();
+        return virtualKeywords.some(keyword => labelLower.includes(keyword));
+      });
+      
+      let defaultSystemDevice;
+      if (virtualDevice) {
+        defaultSystemDevice = virtualDevice;
+        console.log('Auto-selected virtual audio device:', defaultSystemDevice.label);
+      } else {
+        // Look for devices that might be system audio related
+        const systemAudioKeywords = ['stereo mix', 'what u hear', 'system audio', 'built-in', 'internal', 'monitor', 'loopback', 'pulse'];
+        const systemAudioDevice = audioInputDevices.find(device => {
+          if (!device.label) return false;
+          const labelLower = device.label.toLowerCase();
+          return systemAudioKeywords.some(keyword => labelLower.includes(keyword));
+        });
+        
+        if (systemAudioDevice) {
+          defaultSystemDevice = systemAudioDevice;
+          console.log('Auto-selected system audio device:', defaultSystemDevice.label);
+        } else if (audioInputDevices.length > 1) {
+          // Use a different device than the microphone
+          const micDeviceId = appState.micDeviceId;
+          defaultSystemDevice = audioInputDevices.find(device => device.deviceId !== micDeviceId);
+          
+          if (!defaultSystemDevice) {
+            // If all devices are the same as mic, use the second one anyway
+            defaultSystemDevice = audioInputDevices[1];
+          }
+          
+          console.log('Auto-selected different device for system audio:', defaultSystemDevice.label || defaultSystemDevice.deviceId);
+        } else {
+          // Only one device available - use it (same as mic, but no choice)
+          defaultSystemDevice = audioInputDevices[0];
+          console.log('Auto-selected only available device (same as mic):', defaultSystemDevice.label || defaultSystemDevice.deviceId);
+        }
+      }
+      
+      systemSelect.value = defaultSystemDevice.deviceId;
+      appState.systemDeviceId = defaultSystemDevice.deviceId;
+      updateStartButtonState();
+    }
     
     // Add change event listener
     systemSelect.addEventListener('change', (e) => {
@@ -215,6 +270,7 @@ async function initializeSystemAudioSelector() {
         systemSelect.value = currentValue;
         appState.systemDeviceId = currentValue;
       }
+      // If no previous selection or it's no longer available, auto-selection already happened in initialization
     });
     
     // Add a help note if no BlackHole device is found
@@ -237,9 +293,22 @@ async function initializeSystemAudioSelector() {
 }
 
 // Output Folder Picker Handler
-function initializeFolderPicker() {
+async function initializeFolderPicker() {
   const folderPickerBtn = document.getElementById('folder-picker-btn');
   const outputFolderInput = document.getElementById('output-folder');
+  
+  // Set default path to current working directory
+  try {
+    const result = await window.electronAPI.getCurrentDirectory();
+    if (result.success) {
+      outputFolderInput.value = result.path;
+      appState.outputFolder = result.path;
+      console.log('Default output folder set to:', result.path);
+      updateStartButtonState();
+    }
+  } catch (error) {
+    console.error('Error getting current directory:', error);
+  }
   
   folderPickerBtn.addEventListener('click', async () => {
     try {
@@ -300,7 +369,14 @@ async function startRecording() {
     
     // Connect audio streams
     await audioMixer.connectMicrophoneStream(appState.micDeviceId);
-    await audioMixer.connectSystemStream(appState.systemDeviceId);
+    
+    // Only connect system audio if a device is selected
+    if (appState.systemDeviceId) {
+      console.log('Connecting system audio stream...');
+      await audioMixer.connectSystemStream(appState.systemDeviceId);
+    } else {
+      console.log('No system audio device selected - using microphone only');
+    }
     
     // Get mixed stream for processing
     const mixedStream = audioMixer.getMixedStream();
@@ -326,7 +402,11 @@ async function startRecording() {
       } else if (status === 'reconnecting') {
         updateStatus('RECONNECTING');
       } else if (status === 'disconnected') {
-        updateStatus('ERROR');
+        // Only set error if we're still supposed to be recording
+        if (appState.isRecording) {
+          updateStatus('ERROR');
+        }
+        // If we're not recording, this was an intentional stop, so don't show error
       }
     });
     
@@ -399,21 +479,21 @@ async function stopRecording() {
   const startStopBtn = document.getElementById('start-stop-btn');
   
   try {
-    // Update state
+    // Update state FIRST to prevent disconnect from triggering error status
     appState.isRecording = false;
     startStopBtn.textContent = 'Start';
     startStopBtn.classList.remove('stop-mode');
+    
+    // Close WebSocket connections first (now that isRecording is false)
+    if (deepgramClient) {
+      deepgramClient.stop();
+      deepgramClient = null;
+    }
     
     // Stop audio streams
     if (audioMixer) {
       audioMixer.cleanup();
       audioMixer = null;
-    }
-    
-    // Close WebSocket connections
-    if (deepgramClient) {
-      deepgramClient.stop();
-      deepgramClient = null;
     }
     
     // Clear translation service
@@ -557,14 +637,69 @@ async function openSystemSettings() {
   }
 }
 
+// Initialize Advanced Options Toggle
+function initializeAdvancedToggle() {
+  const advancedToggle = document.getElementById('advanced-toggle');
+  const advancedSection = document.getElementById('advanced-section');
+  let isExpanded = false;
+
+  advancedToggle.addEventListener('click', () => {
+    isExpanded = !isExpanded;
+    
+    if (isExpanded) {
+      advancedSection.style.display = 'block';
+      advancedToggle.textContent = 'Hide virtual audio options';
+    } else {
+      advancedSection.style.display = 'none';
+      advancedToggle.textContent = 'I have virtual audio software';
+    }
+  });
+}
+
+// Initialize External Links
+function initializeExternalLinks() {
+  const blackholeLink = document.getElementById('blackhole-link');
+  const vbCableLink = document.getElementById('vb-cable-link');
+  const pulseAudioLink = document.getElementById('pulseaudio-link');
+  
+  blackholeLink.addEventListener('click', async (e) => {
+    e.preventDefault();
+    try {
+      await window.electronAPI.openExternalUrl('https://existential.audio/blackhole/');
+    } catch (error) {
+      console.error('Error opening BlackHole link:', error);
+    }
+  });
+  
+  vbCableLink.addEventListener('click', async (e) => {
+    e.preventDefault();
+    try {
+      await window.electronAPI.openExternalUrl('https://vb-audio.com/Cable/');
+    } catch (error) {
+      console.error('Error opening VB-Cable link:', error);
+    }
+  });
+  
+  pulseAudioLink.addEventListener('click', async (e) => {
+    e.preventDefault();
+    try {
+      await window.electronAPI.openExternalUrl('https://wiki.archlinux.org/title/PulseAudio/Examples#Monitor_specific_output');
+    } catch (error) {
+      console.error('Error opening PulseAudio link:', error);
+    }
+  });
+}
+
 // Initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', async () => {
   console.log('Live Translator initialized');
   initializeDirectionSelector();
   await initializeMicrophoneSelector();
   await initializeSystemAudioSelector();
-  initializeFolderPicker();
+  await initializeFolderPicker();
   initializeStartStopButton();
+  initializeAdvancedToggle();
+  initializeExternalLinks();
   updateStartButtonState();
   updateStatus('READY');
 });

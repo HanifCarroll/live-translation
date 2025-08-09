@@ -182,3 +182,24 @@ ipcMain.handle('system:openSettings', async () => {
     return { success: false, error: error.message };
   }
 });
+
+// Handle getting current working directory
+ipcMain.handle('system:getCurrentDirectory', async () => {
+  try {
+    return { success: true, path: process.cwd() };
+  } catch (error) {
+    console.error('Error getting current directory:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+// Handle opening external URLs
+ipcMain.handle('system:openExternalUrl', async (event, url) => {
+  try {
+    await shell.openExternal(url);
+    return { success: true };
+  } catch (error) {
+    console.error('Error opening external URL:', error);
+    return { success: false, error: error.message };
+  }
+});

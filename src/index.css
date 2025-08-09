@@ -200,6 +200,126 @@ body {
   background: #b91c1c;
 }
 
+/* Info Banner */
+.info-banner {
+  margin-bottom: 15px;
+  padding: 20px;
+  background: rgba(59, 130, 246, 0.08);
+  border: 1px solid rgba(59, 130, 246, 0.2);
+  border-radius: 12px;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.info-banner p {
+  margin: 0 0 12px 0;
+  color: #1e40af;
+}
+
+.info-banner p:last-of-type {
+  margin-bottom: 12px;
+}
+
+.info-banner strong {
+  color: #1d4ed8;
+}
+
+/* Download Links */
+.download-links {
+  display: flex;
+  gap: 12px;
+  margin: 16px 0;
+  flex-wrap: wrap;
+}
+
+.download-link {
+  display: flex;
+  flex-direction: column;
+  padding: 12px 16px;
+  background: white;
+  border: 2px solid #e5e7eb;
+  border-radius: 8px;
+  text-decoration: none;
+  transition: all 0.2s;
+  cursor: pointer;
+  min-width: 140px;
+  flex: 1;
+  max-width: 200px;
+}
+
+.download-link:hover {
+  border-color: #3b82f6;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
+}
+
+.download-link .platform {
+  font-size: 11px;
+  color: #6b7280;
+  text-transform: uppercase;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  margin-bottom: 2px;
+}
+
+.download-link .app-name {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1f2937;
+  margin-bottom: 2px;
+}
+
+.download-link .description {
+  font-size: 12px;
+  color: #10b981;
+  font-weight: 500;
+}
+
+/* Technical Note */
+.technical-note {
+  font-size: 13px;
+  color: #6b7280;
+  font-style: italic;
+  margin: 12px 0 16px 0;
+  padding: 8px 12px;
+  background: rgba(107, 114, 128, 0.05);
+  border-radius: 6px;
+}
+
+/* Toggle Button */
+.toggle-button {
+  padding: 6px 12px;
+  background: #667eea;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.3s;
+}
+
+.toggle-button:hover {
+  background: #5a67d8;
+}
+
+/* Advanced Section */
+.advanced-section {
+  background: rgba(243, 244, 246, 0.5);
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  padding: 15px;
+  margin-top: 10px;
+}
+
+.help-text {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  color: #6b7280;
+  font-style: italic;
+}
+
 .status-chip {
   display: inline-block;
   padding: 6px 16px;

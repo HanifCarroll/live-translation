@@ -30,11 +30,37 @@
           </select>
         </div>
 
-        <div class="control-group">
-          <label for="system-select">System Audio (BlackHole):</label>
+        <!-- System Audio Instructions -->
+        <div class="info-banner">
+          <p><strong>🎯 Want to translate what others are saying too?</strong></p>
+          <p>Right now, this app only captures your microphone. To also translate what you hear in Zoom calls, YouTube videos, or any app audio, you'll need a free tool:</p>
+          <div class="download-links">
+            <a href="#" id="blackhole-link" class="download-link">
+              <span class="platform">macOS</span>
+              <span class="app-name">BlackHole</span>
+              <span class="description">Free • 2-minute setup</span>
+            </a>
+            <a href="#" id="vb-cable-link" class="download-link">
+              <span class="platform">Windows</span>
+              <span class="app-name">VB-Cable</span>
+              <span class="description">Free • 2-minute setup</span>
+            </a>
+            <a href="#" id="pulseaudio-link" class="download-link">
+              <span class="platform">Linux</span>
+              <span class="app-name">PulseAudio Loopback</span>
+              <span class="description">Built-in • Terminal setup</span>
+            </a>
+          </div>
+          <p class="technical-note">Why? Computers block apps from "listening" to system audio for security. These tools create a safe bridge.</p>
+          <button id="advanced-toggle" class="toggle-button">I have virtual audio software</button>
+        </div>
+
+        <div class="control-group advanced-section" id="advanced-section" style="display: none;">
+          <label for="system-select">Virtual Audio Device:</label>
           <select id="system-select" class="device-select">
-            <option value="">Select system audio...</option>
+            <option value="">Select your virtual audio device...</option>
           </select>
+          <small class="help-text">Choose BlackHole, VB-Cable, or similar device you've installed</small>
         </div>
 
         <div class="control-group">
