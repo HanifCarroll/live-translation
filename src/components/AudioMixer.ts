@@ -43,7 +43,6 @@ export class AudioMixer {
       this.micGainNode.gain.setValueAtTime(1.0, this.audioContext.currentTime)
       this.systemGainNode.gain.setValueAtTime(1.0, this.audioContext.currentTime)
       
-      console.log('AudioMixer initialized successfully')
       return true
     } catch (error) {
       console.error('Failed to initialize AudioMixer:', error)
@@ -76,7 +75,6 @@ export class AudioMixer {
       this.micSourceNode.connect(this.micGainNode!)
       this.micGainNode!.connect(this.destinationNode!)
       
-      console.log('Microphone stream connected')
       return true
     } catch (error) {
       console.error('Failed to connect microphone stream:', error)
@@ -109,7 +107,6 @@ export class AudioMixer {
       this.systemSourceNode.connect(this.systemGainNode!)
       this.systemGainNode!.connect(this.destinationNode!)
       
-      console.log('System audio stream connected')
       return true
     } catch (error) {
       console.error('Failed to connect system audio stream:', error)
@@ -146,7 +143,6 @@ export class AudioMixer {
     for (const type of supportedTypes) {
       if (MediaRecorder.isTypeSupported(type)) {
         selectedType = type
-        console.log('Using MIME type:', selectedType)
         break
       }
     }
@@ -161,14 +157,11 @@ export class AudioMixer {
     // Set up data handling
     mediaRecorder.ondataavailable = (event) => {
       if (event.data.size > 0 && deepgramClient && deepgramClient.getStatus().isConnected) {
-        console.log('Audio data available:', event.data.size, 'bytes')
         // Convert blob to ArrayBuffer for Deepgram
         event.data.arrayBuffer().then(buffer => {
-          console.log('Sending audio buffer to Deepgram:', buffer.byteLength, 'bytes')
           deepgramClient.sendAudio(buffer)
         })
       } else {
-        console.log('Skipping audio data - size:', event.data.size, 'connected:', deepgramClient?.getStatus().isConnected)
       }
     }
 
@@ -179,8 +172,6 @@ export class AudioMixer {
     // Start recording with small time slices for real-time streaming
     mediaRecorder.start(100) // 100ms chunks for low latency
     
-    console.log('MediaRecorder started with format:', selectedType)
-    console.log('MediaRecorder state:', mediaRecorder.state)
     
     return mediaRecorder
   }
@@ -249,7 +240,6 @@ export class AudioMixer {
       this.destinationNode = null
       this.mixedStream = null
       
-      console.log('AudioMixer cleanup completed')
     } catch (error) {
       console.error('Error during AudioMixer cleanup:', error)
     }

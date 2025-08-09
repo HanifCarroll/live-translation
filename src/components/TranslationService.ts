@@ -52,7 +52,6 @@ export class TranslationService {
       
       if (result.data && result.data.translations && result.data.translations.length > 0) {
         const translatedText = result.data.translations[0].translatedText
-        console.log('Translation successful:', text, '->', translatedText)
         return translatedText
       } else {
         console.error('Unexpected translation response format:', result)
@@ -86,7 +85,6 @@ export class TranslationService {
   async testConnection(): Promise<boolean> {
     try {
       const result = await this.translateText('Hello', 'en', 'es')
-      console.log('Translation service test successful:', result)
       return true
     } catch (error) {
       console.error('Translation service test failed:', error)

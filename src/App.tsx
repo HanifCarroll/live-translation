@@ -213,8 +213,14 @@ function AppContent() {
 
   const handleStopRecording = useCallback(async () => {
     try {
-      // Save transcript info before cleanup
-      if (appState.outputFolder && appState.sessionName) {
+      setAppState((prev) => ({ ...prev, isRecording: false }));
+      setTranslationLines([]);
+      setUiState(prev => ({ ...prev, showOverlay: false }));
+      
+      const hadContent = await stopRecordingHook();
+      
+      // Only set transcript info if there was actual content saved
+      if (hadContent && appState.outputFolder && appState.sessionName) {
         const sourceExt = appState.direction === "en-es" ? "en" : "es";
         const targetExt = appState.direction === "en-es" ? "es" : "en";
         setLastTranscript({
@@ -223,12 +229,10 @@ function AppContent() {
           sessionName: appState.sessionName,
           folderPath: appState.outputFolder,
         });
+      } else {
+        // Clear any previous transcript if no content was recorded
+        setLastTranscript(null);
       }
-
-      setAppState((prev) => ({ ...prev, isRecording: false }));
-      setTranslationLines([]);
-      setUiState(prev => ({ ...prev, showOverlay: false }));
-      await stopRecordingHook();
     } catch (error) {
       console.error('Error during stop recording cleanup:', error);
       // Don't set ERROR status - stopping is always considered successful from UI perspective
@@ -612,7 +616,6 @@ function AppContent() {
 
       {/* Sticky Footer */}
       <StickyFooter
-        status={appState.status}
         isRecording={appState.isRecording}
         canStart={canStart}
         onStartStop={handleStartStop}

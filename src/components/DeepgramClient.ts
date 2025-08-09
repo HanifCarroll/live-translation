@@ -31,7 +31,6 @@ export class DeepgramClient {
   async connect(options: Record<string, any> = {}): Promise<void> {
     try {
       if (this.socket && this.isConnected) {
-        console.log('Already connected to Deepgram')
         return
       }
 
@@ -58,9 +57,6 @@ export class DeepgramClient {
       
       const wsUrl = `wss://api.deepgram.com/v1/listen?${params.toString()}`
       
-      console.log('Connecting to Deepgram WebSocket...')
-      console.log('WebSocket URL:', wsUrl)
-      console.log('API Key (first 10 chars):', this.apiKey.substring(0, 10) + '...')
       
       this.socket = new WebSocket(wsUrl, ['token', this.apiKey])
 
@@ -68,7 +64,6 @@ export class DeepgramClient {
         if (!this.socket) return reject(new Error('Socket not created'))
 
         this.socket.onopen = () => {
-          console.log('Connected to Deepgram')
           this.isConnected = true
           this.reconnectAttempts = 0
           this.reconnectDelay = 1000
@@ -81,12 +76,10 @@ export class DeepgramClient {
         }
 
         this.socket.onmessage = (event) => {
-          console.log('Raw message from Deepgram:', event.data)
           this.handleMessage(event.data)
         }
 
         this.socket.onclose = (event) => {
-          console.log('Deepgram connection closed:', event.code, event.reason)
           this.isConnected = false
           
           if (this.onConnectionCallback) {
@@ -174,17 +167,14 @@ export class DeepgramClient {
   // Send audio data to Deepgram
   sendAudio(audioData: ArrayBuffer) {
     if (this.socket && this.isConnected && this.socket.readyState === WebSocket.OPEN) {
-      console.log('Sending audio to Deepgram:', audioData.byteLength, 'bytes')
       this.socket.send(audioData)
     } else {
-      console.warn('Cannot send audio: WebSocket not connected. State:', this.socket?.readyState, 'Connected:', this.isConnected)
     }
   }
 
   // Start recording (begin processing audio)
   startRecording() {
     this.isRecording = true
-    console.log('Deepgram recording started')
   }
 
   // Stop recording and close connection
@@ -201,7 +191,6 @@ export class DeepgramClient {
       this.isConnected = false
     }
     
-    console.log('Deepgram connection stopped')
   }
 
   // Attempt to reconnect with exponential backoff
@@ -215,7 +204,6 @@ export class DeepgramClient {
     }
 
     this.reconnectAttempts++
-    console.log(`Attempting to reconnect (${this.reconnectAttempts}/${this.maxReconnectAttempts})...`)
     
     if (this.onConnectionCallback) {
       this.onConnectionCallback('reconnecting')
@@ -225,7 +213,6 @@ export class DeepgramClient {
       try {
         await this.connect()
         if (this.isConnected) {
-          console.log('Reconnection successful')
         }
       } catch (error) {
         console.error('Reconnection failed:', error)
@@ -262,11 +249,8 @@ export class DeepgramClient {
         }
       })
       
-      console.log('Deepgram API test response status:', response.status)
-      console.log('Response headers:')
       for (const [key, value] of response.headers.entries()) {
         if (key.startsWith('dg-')) {
-          console.log(`${key}: ${value}`)
         }
       }
       
