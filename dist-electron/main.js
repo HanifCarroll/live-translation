@@ -3447,7 +3447,7 @@ const defaultSettings = {
   },
   defaults: {
     translationDirection: "en-es",
-    outputFolder: "",
+    outputFolder: path$1.join(process.cwd(), "transcripts"),
     micDeviceId: "",
     systemDeviceId: "",
     sessionNamePattern: "session-{YYYY}-{MM}-{DD}-{HH}{mm}"
