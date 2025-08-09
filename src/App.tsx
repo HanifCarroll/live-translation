@@ -74,7 +74,7 @@ interface AppState {
 function AppContent() {
   const { isDarkMode, setTheme } = useTheme();
   const { settings, loading: settingsLoading, updateSettings } = useSettings();
-  const { micDevices, systemDevices } = useAudioDevices();
+  const { micDevices, systemDevices, loading: devicesLoading } = useAudioDevices();
 
   const [appState, setAppState] = useState<AppState>({
     direction: "en-es",
@@ -137,32 +137,13 @@ function AppContent() {
     }
   }, [settings, settingsLoading, generateSessionName]);
 
-  // Initialize output folder
-  useEffect(() => {
-    const initializeOutputFolder = async () => {
-      try {
-        if (window.electronAPI && !appState.outputFolder) {
-          const result = await window.electronAPI.getCurrentDirectory();
-          if (result.success && result.path) {
-            setAppState((prev) => ({
-              ...prev,
-              outputFolder: result.path || null,
-            }));
-          }
-        }
-      } catch (error) {
-        console.error("Error getting current directory:", error);
-      }
-    };
-    initializeOutputFolder();
-  }, []);
 
-  // Auto-select first available microphone
+  // Auto-select first available microphone (only after settings and devices have loaded)
   useEffect(() => {
-    if (micDevices.length > 0 && !appState.micDeviceId) {
+    if (!settingsLoading && !devicesLoading && micDevices.length > 0 && !appState.micDeviceId) {
       setAppState((prev) => ({ ...prev, micDeviceId: micDevices[0].deviceId }));
     }
-  }, [micDevices, appState.micDeviceId]);
+  }, [micDevices, appState.micDeviceId, settingsLoading, devicesLoading]);
 
   // Memoized computed values
   const canStart = useMemo(() => {
@@ -173,10 +154,12 @@ function AppContent() {
 
   const errorMessage = useMemo(() => {
     if (appState.isRecording) return "";
+    // Don't show errors while settings or devices are still loading
+    if (settingsLoading || devicesLoading) return ""; 
     if (!appState.micDeviceId) return "Please select a microphone";
     if (!appState.outputFolder) return "Please select output folder";
     return "";
-  }, [appState.isRecording, appState.micDeviceId, appState.outputFolder]);
+  }, [appState.isRecording, appState.micDeviceId, appState.outputFolder, settingsLoading, devicesLoading]);
 
   // Recording hook
   const {

@@ -3529,7 +3529,11 @@ async function loadSettings() {
         console.log("No encrypted keys found, using settings keys");
       }
     }
-    return { ...defaultSettings, ...validatedSettings };
+    const mergedSettings = { ...defaultSettings, ...validatedSettings };
+    if (!mergedSettings.defaults.outputFolder) {
+      mergedSettings.defaults.outputFolder = defaultSettings.defaults.outputFolder;
+    }
+    return mergedSettings;
   } catch (error) {
     console.error("Error loading settings:", error);
     return defaultSettings;

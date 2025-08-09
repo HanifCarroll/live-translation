@@ -160,7 +160,6 @@ export function useRecording(options: UseRecordingOptions): UseRecordingReturn {
       
       await translationServiceRef.current.testConnection()
       onStatusChange('LISTENING')
-      toast.success('Recording started successfully')
       
     } catch (error: any) {
       console.error('Error starting recording:', error)
@@ -172,14 +171,8 @@ export function useRecording(options: UseRecordingOptions): UseRecordingReturn {
   }, [options, cleanup])
 
   const stopRecording = useCallback(async () => {
-    try {
-      await cleanup()
-      toast.success('Recording stopped and transcripts saved')
-    } catch (error) {
-      console.error('Error stopping recording:', error)
-      toast.error('Error stopping recording')
-      throw error
-    }
+    await cleanup()
+    toast.success('Recording stopped and transcripts saved')
   }, [cleanup])
 
   return {

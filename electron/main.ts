@@ -165,7 +165,15 @@ async function loadSettings(): Promise<AppSettings> {
       }
     }
     
-    return { ...defaultSettings, ...validatedSettings }
+    // Merge settings, but use defaults for empty string values
+    const mergedSettings = { ...defaultSettings, ...validatedSettings }
+    
+    // If outputFolder is empty, use the default
+    if (!mergedSettings.defaults.outputFolder) {
+      mergedSettings.defaults.outputFolder = defaultSettings.defaults.outputFolder
+    }
+    
+    return mergedSettings
   } catch (error) {
     console.error('Error loading settings:', error)
     return defaultSettings
