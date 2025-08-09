@@ -1,100 +1,113 @@
-/* Custom styles for the Live Translator app */
+/* Minimalist styles for Live Translator */
 
-.new-line {
-  animation: slideIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+* {
+  box-sizing: border-box;
 }
 
-@keyframes slideIn {
+.new-line {
+  animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes fadeIn {
   from { 
     opacity: 0; 
-    transform: translateY(20px) scale(0.95);
+    transform: translateY(10px);
   }
   to { 
     opacity: 1; 
-    transform: translateY(0) scale(1);
+    transform: translateY(0);
   }
 }
 
 .pulse-dot {
-  animation: pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  animation: pulse 2s ease-in-out infinite;
 }
 
 @keyframes pulse {
   0%, 100% {
     opacity: 1;
-  }
-  50% {
-    opacity: 0.5;
-  }
-}
-
-.recording-indicator {
-  animation: recording 2s ease-in-out infinite;
-}
-
-@keyframes recording {
-  0%, 100% {
     transform: scale(1);
-    opacity: 0.8;
   }
   50% {
-    transform: scale(1.1);
-    opacity: 1;
+    opacity: 0.4;
+    transform: scale(0.95);
   }
-}
-
-/* Glassmorphism effect */
-.glass {
-  background: rgba(255, 255, 255, 0.05);
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.glass-dark {
-  background: rgba(0, 0, 0, 0.3);
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 /* Custom scrollbar */
 .custom-scrollbar::-webkit-scrollbar {
-  width: 6px;
+  width: 4px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 3px;
+  background: #f1f1f1;
+  border-radius: 2px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 3px;
+  background: #d1d5db;
+  border-radius: 2px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.3);
+  background: #9ca3af;
 }
 
-/* Gradient text */
-.gradient-text {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+/* Card hover effect */
+.card-hover {
+  transition: all 0.2s ease;
 }
 
-/* Status badge animations */
-.status-connecting {
-  animation: statusPulse 1.5s ease-in-out infinite;
+.card-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+}
+
+/* Card hover effect without transform */
+.card-hover-no-lift {
+  transition: box-shadow 0.2s ease;
+}
+
+.card-hover-no-lift:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+/* Focus styles */
+.focus-ring:focus {
+  outline: none;
+  ring: 2px;
+  ring-offset: 2px;
+  ring-color: #6366f1;
+}
+
+/* Minimalist button */
+.btn-minimal {
+  transition: all 0.15s ease;
+}
+
+.btn-minimal:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.btn-minimal:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+/* Status dot animation */
+.status-dot {
+  animation: statusPulse 3s ease-in-out infinite;
 }
 
 @keyframes statusPulse {
   0%, 100% {
-    opacity: 0.7;
-    transform: scale(1);
+    opacity: 1;
   }
   50% {
-    opacity: 1;
-    transform: scale(1.05);
+    opacity: 0.3;
   }
+}
+
+/* Smooth transitions */
+.smooth-transition {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }

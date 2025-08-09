@@ -495,6 +495,105 @@ ipcMain.handle("system:openExternalUrl", async (event, url) => {
     return { success: false, error: error.message };
   }
 });
+ipcMain.handle("files:readTranscript", async (event, filepath) => {
+  try {
+    const content = fs$1.readFileSync(filepath, "utf-8");
+    return { success: true, content };
+  } catch (error) {
+    console.error("Error reading transcript file:", error);
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("files:deleteTranscript", async (event, filepath) => {
+  try {
+    fs$1.unlinkSync(filepath);
+    return { success: true };
+  } catch (error) {
+    console.error("Error deleting transcript file:", error);
+    return { success: false, error: error.message };
+  }
+});
+const settingsFilePath = path$1.join(app.getPath("userData"), "settings.json");
+const defaultSettings = {
+  apiKeys: {
+    deepgram: "",
+    google: ""
+  },
+  defaults: {
+    translationDirection: "en-es",
+    outputFolder: "",
+    micDeviceId: "",
+    systemDeviceId: "",
+    sessionNamePattern: "session-{YYYY}-{MM}-{DD}-{HH}{mm}"
+  },
+  ui: {
+    theme: "system",
+    translationDisplayCount: 3
+  }
+};
+function loadSettings() {
+  try {
+    if (fs$1.existsSync(settingsFilePath)) {
+      const settingsData = fs$1.readFileSync(settingsFilePath, "utf-8");
+      const savedSettings = JSON.parse(settingsData);
+      return { ...defaultSettings, ...savedSettings };
+    }
+  } catch (error) {
+    console.error("Error loading settings:", error);
+  }
+  return defaultSettings;
+}
+function saveSettings(settings) {
+  try {
+    fs$1.writeFileSync(settingsFilePath, JSON.stringify(settings, null, 2));
+    return true;
+  } catch (error) {
+    console.error("Error saving settings:", error);
+    return false;
+  }
+}
+ipcMain.handle("settings:get", async () => {
+  try {
+    const settings = loadSettings();
+    return { success: true, settings };
+  } catch (error) {
+    console.error("Error getting settings:", error);
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("settings:update", async (event, newSettings) => {
+  try {
+    const currentSettings = loadSettings();
+    const updatedSettings = { ...currentSettings, ...newSettings };
+    const saved = saveSettings(updatedSettings);
+    if (saved) {
+      return { success: true, settings: updatedSettings };
+    } else {
+      return { success: false, error: "Failed to save settings" };
+    }
+  } catch (error) {
+    console.error("Error updating settings:", error);
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("config:getApiKeys", async () => {
+  console.log("Getting API keys...");
+  const settings = loadSettings();
+  let deepgramApiKey = settings.apiKeys.deepgram;
+  let googleApiKey = settings.apiKeys.google;
+  if (!deepgramApiKey) {
+    deepgramApiKey = process.env.DEEPGRAM_API_KEY || "your_deepgram_api_key_here";
+  }
+  if (!googleApiKey) {
+    googleApiKey = process.env.GOOGLE_API_KEY || "your_google_api_key_here";
+  }
+  console.log("DEEPGRAM_API_KEY:", deepgramApiKey !== "your_deepgram_api_key_here" ? "Found" : "Missing");
+  console.log("GOOGLE_API_KEY:", googleApiKey !== "your_google_api_key_here" ? "Found" : "Missing");
+  return {
+    deepgramApiKey,
+    googleApiKey
+  };
+});
 export {
   MAIN_DIST,
   RENDERER_DIST,

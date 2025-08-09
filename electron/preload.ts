@@ -11,9 +11,15 @@ contextBridge.exposeInMainWorld('electronAPI', {
   appendToTranscript: (filename: string, text: string) => 
     ipcRenderer.invoke('files:appendTranscript', filename, text),
   closeTranscriptFiles: () => ipcRenderer.invoke('files:closeTranscripts'),
+  readTranscriptFile: (filepath: string) => ipcRenderer.invoke('files:readTranscript', filepath),
+  deleteTranscriptFile: (filepath: string) => ipcRenderer.invoke('files:deleteTranscript', filepath),
   
   // API Keys
   getApiKeys: () => ipcRenderer.invoke('config:getApiKeys'),
+  
+  // Settings
+  getSettings: () => ipcRenderer.invoke('settings:get'),
+  updateSettings: (settings: any) => ipcRenderer.invoke('settings:update', settings),
   
   // System Settings
   openSystemSettings: () => ipcRenderer.invoke('system:openSettings'),

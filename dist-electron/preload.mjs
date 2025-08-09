@@ -6,8 +6,13 @@ electron.contextBridge.exposeInMainWorld("electronAPI", {
   createTranscriptFiles: (folderPath, sessionName) => electron.ipcRenderer.invoke("files:createTranscripts", folderPath, sessionName),
   appendToTranscript: (filename, text) => electron.ipcRenderer.invoke("files:appendTranscript", filename, text),
   closeTranscriptFiles: () => electron.ipcRenderer.invoke("files:closeTranscripts"),
+  readTranscriptFile: (filepath) => electron.ipcRenderer.invoke("files:readTranscript", filepath),
+  deleteTranscriptFile: (filepath) => electron.ipcRenderer.invoke("files:deleteTranscript", filepath),
   // API Keys
   getApiKeys: () => electron.ipcRenderer.invoke("config:getApiKeys"),
+  // Settings
+  getSettings: () => electron.ipcRenderer.invoke("settings:get"),
+  updateSettings: (settings) => electron.ipcRenderer.invoke("settings:update", settings),
   // System Settings
   openSystemSettings: () => electron.ipcRenderer.invoke("system:openSettings"),
   getCurrentDirectory: () => electron.ipcRenderer.invoke("system:getCurrentDirectory"),

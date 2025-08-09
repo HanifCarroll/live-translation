@@ -233,3 +233,144 @@ ipcMain.handle('system:openExternalUrl', async (event, url: string) => {
     return { success: false, error: error.message }
   }
 })
+
+// Read transcript file
+ipcMain.handle('files:readTranscript', async (event, filepath: string) => {
+  try {
+    const content = fs.readFileSync(filepath, 'utf-8')
+    return { success: true, content }
+  } catch (error: any) {
+    console.error('Error reading transcript file:', error)
+    return { success: false, error: error.message }
+  }
+})
+
+// Delete transcript file
+ipcMain.handle('files:deleteTranscript', async (event, filepath: string) => {
+  try {
+    fs.unlinkSync(filepath)
+    return { success: true }
+  } catch (error: any) {
+    console.error('Error deleting transcript file:', error)
+    return { success: false, error: error.message }
+  }
+})
+
+// Settings management
+const settingsFilePath = path.join(app.getPath('userData'), 'settings.json')
+
+interface AppSettings {
+  apiKeys: {
+    deepgram: string
+    google: string
+  }
+  defaults: {
+    translationDirection: 'en-es' | 'es-en'
+    outputFolder: string
+    micDeviceId: string
+    systemDeviceId: string
+    sessionNamePattern: string
+  }
+  ui: {
+    theme: 'light' | 'dark' | 'system'
+    translationDisplayCount: number
+  }
+}
+
+const defaultSettings: AppSettings = {
+  apiKeys: {
+    deepgram: '',
+    google: ''
+  },
+  defaults: {
+    translationDirection: 'en-es',
+    outputFolder: '',
+    micDeviceId: '',
+    systemDeviceId: '',
+    sessionNamePattern: 'session-{YYYY}-{MM}-{DD}-{HH}{mm}'
+  },
+  ui: {
+    theme: 'system',
+    translationDisplayCount: 3
+  }
+}
+
+// Load settings
+function loadSettings(): AppSettings {
+  try {
+    if (fs.existsSync(settingsFilePath)) {
+      const settingsData = fs.readFileSync(settingsFilePath, 'utf-8')
+      const savedSettings = JSON.parse(settingsData)
+      // Merge with defaults to handle new settings
+      return { ...defaultSettings, ...savedSettings }
+    }
+  } catch (error) {
+    console.error('Error loading settings:', error)
+  }
+  return defaultSettings
+}
+
+// Save settings
+function saveSettings(settings: AppSettings): boolean {
+  try {
+    fs.writeFileSync(settingsFilePath, JSON.stringify(settings, null, 2))
+    return true
+  } catch (error) {
+    console.error('Error saving settings:', error)
+    return false
+  }
+}
+
+// Get settings
+ipcMain.handle('settings:get', async () => {
+  try {
+    const settings = loadSettings()
+    return { success: true, settings }
+  } catch (error: any) {
+    console.error('Error getting settings:', error)
+    return { success: false, error: error.message }
+  }
+})
+
+// Update settings
+ipcMain.handle('settings:update', async (event, newSettings: Partial<AppSettings>) => {
+  try {
+    const currentSettings = loadSettings()
+    const updatedSettings = { ...currentSettings, ...newSettings }
+    const saved = saveSettings(updatedSettings)
+    if (saved) {
+      return { success: true, settings: updatedSettings }
+    } else {
+      return { success: false, error: 'Failed to save settings' }
+    }
+  } catch (error: any) {
+    console.error('Error updating settings:', error)
+    return { success: false, error: error.message }
+  }
+})
+
+// Modified getApiKeys to check settings first, then env vars
+ipcMain.handle('config:getApiKeys', async () => {
+  console.log('Getting API keys...')
+  
+  // First try to get from settings
+  const settings = loadSettings()
+  let deepgramApiKey = settings.apiKeys.deepgram
+  let googleApiKey = settings.apiKeys.google
+  
+  // Fall back to environment variables if not in settings
+  if (!deepgramApiKey) {
+    deepgramApiKey = process.env.DEEPGRAM_API_KEY || 'your_deepgram_api_key_here'
+  }
+  if (!googleApiKey) {
+    googleApiKey = process.env.GOOGLE_API_KEY || 'your_google_api_key_here'
+  }
+  
+  console.log('DEEPGRAM_API_KEY:', deepgramApiKey !== 'your_deepgram_api_key_here' ? 'Found' : 'Missing')
+  console.log('GOOGLE_API_KEY:', googleApiKey !== 'your_google_api_key_here' ? 'Found' : 'Missing')
+  
+  return {
+    deepgramApiKey,
+    googleApiKey
+  }
+})
