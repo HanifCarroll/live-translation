@@ -3419,6 +3419,16 @@ const MAIN_DIST = path$1.join(process.env.APP_ROOT, "dist-electron");
 const RENDERER_DIST = path$1.join(process.env.APP_ROOT, "dist");
 process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL ? path$1.join(process.env.APP_ROOT, "public") : RENDERER_DIST;
 let win;
+if (process.env.NODE_ENV !== "production") {
+  const originalConsoleError = console.error;
+  console.error = (...args) => {
+    const message = args.join(" ");
+    if (message.includes("Autofill.enable") || message.includes("AVCaptureDeviceTypeExternal is deprecated")) {
+      return;
+    }
+    originalConsoleError.apply(console, args);
+  };
+}
 const FilePathSchema = string().min(1).max(1e3).refine((path2) => {
   return !path2.includes("..") && !path2.includes("~");
 }, "Invalid file path");
@@ -3526,7 +3536,6 @@ async function loadSettings() {
         const keys = JSON.parse(decryptedKeys);
         validatedSettings.apiKeys = keys;
       } catch (error) {
-        console.log("No encrypted keys found, using settings keys");
       }
     }
     const mergedSettings = { ...defaultSettings, ...validatedSettings };
@@ -3628,7 +3637,6 @@ ipcMain.handle("files:closeTranscripts", async () => {
 });
 ipcMain.handle("config:getApiKeys", async () => {
   try {
-    console.log("Getting API keys...");
     const settings = await loadSettings();
     let deepgramApiKey = settings.apiKeys.deepgram;
     let googleApiKey = settings.apiKeys.google;
@@ -3638,8 +3646,6 @@ ipcMain.handle("config:getApiKeys", async () => {
     if (!googleApiKey) {
       googleApiKey = process.env.GOOGLE_API_KEY || "your_google_api_key_here";
     }
-    console.log("DEEPGRAM_API_KEY:", deepgramApiKey !== "your_deepgram_api_key_here" ? "Found" : "Missing");
-    console.log("GOOGLE_API_KEY:", googleApiKey !== "your_google_api_key_here" ? "Found" : "Missing");
     return { deepgramApiKey, googleApiKey };
   } catch (error) {
     console.error("Error getting API keys:", error);

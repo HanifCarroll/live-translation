@@ -23,6 +23,19 @@ process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL ? path.join(process.env.APP_ROOT, 
 
 let win: BrowserWindow | null
 
+// Suppress common console warnings in development
+if (process.env.NODE_ENV !== 'production') {
+  const originalConsoleError = console.error
+  console.error = (...args) => {
+    const message = args.join(' ')
+    if (message.includes('Autofill.enable') || 
+        message.includes('AVCaptureDeviceTypeExternal is deprecated')) {
+      return // Suppress these specific warnings
+    }
+    originalConsoleError.apply(console, args)
+  }
+}
+
 // Validation schemas
 const FilePathSchema = z.string().min(1).max(1000).refine((path) => {
   // Prevent directory traversal
@@ -161,7 +174,7 @@ async function loadSettings(): Promise<AppSettings> {
         const keys = JSON.parse(decryptedKeys)
         validatedSettings.apiKeys = keys
       } catch (error) {
-        console.log('No encrypted keys found, using settings keys')
+        // Encrypted keys not available, using settings keys (normal for first run)
       }
     }
     
@@ -291,7 +304,6 @@ ipcMain.handle('files:closeTranscripts', async () => {
 
 ipcMain.handle('config:getApiKeys', async () => {
   try {
-    console.log('Getting API keys...')
     
     const settings = await loadSettings()
     let deepgramApiKey = settings.apiKeys.deepgram
@@ -305,8 +317,6 @@ ipcMain.handle('config:getApiKeys', async () => {
       googleApiKey = process.env.GOOGLE_API_KEY || 'your_google_api_key_here'
     }
     
-    console.log('DEEPGRAM_API_KEY:', deepgramApiKey !== 'your_deepgram_api_key_here' ? 'Found' : 'Missing')
-    console.log('GOOGLE_API_KEY:', googleApiKey !== 'your_google_api_key_here' ? 'Found' : 'Missing')
     
     return { deepgramApiKey, googleApiKey }
   } catch (error: any) {
