@@ -15,7 +15,6 @@ interface SessionSetupProps {
   sessionName: string | null
   onFolderSelect: () => Promise<void>
   onSessionNameChange: (name: string) => void
-  onExternalUrlOpen: (url: string) => Promise<void>
   disabled?: boolean
 }
 
@@ -32,7 +31,6 @@ export const SessionSetup = memo(function SessionSetup({
   sessionName,
   onFolderSelect,
   onSessionNameChange,
-  onExternalUrlOpen,
   disabled = false
 }: SessionSetupProps) {
   const { isDarkMode } = useTheme()
