@@ -135,41 +135,37 @@ export const SessionSetup = memo(function SessionSetup({
 
         {/* Row 3: System Audio (6/6) + Session Name (6/6) */}
         <div className="col-span-12 md:col-span-6 border-t pt-6 mt-6">
-          <label className={`block text-sm font-medium mb-2 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-            System Audio (Optional)
-          </label>
-          <div className={`p-3 rounded-lg mb-3 ${isDarkMode ? 'bg-blue-900/20 border border-blue-800' : 'bg-blue-50 border border-blue-200'}`}>
-            <p className={`text-sm mb-2 ${isDarkMode ? 'text-blue-200' : 'text-blue-900'}`}>
-              <strong>Want to translate Zoom calls, YouTube videos, or music?</strong>
-            </p>
-            <p className={`text-xs mb-3 ${isDarkMode ? 'text-blue-300' : 'text-blue-700'}`}>
-              Your computer normally can't capture audio from other apps for privacy reasons. Virtual audio software creates a bridge to safely route audio to this translator.
-            </p>
-            <div className="flex flex-wrap gap-2">
-              <button
-                onClick={() => onExternalUrlOpen('https://existential.audio/blackhole/')}
-                disabled={disabled}
-                className={`text-xs px-3 py-1.5 rounded-full border transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
-                  isDarkMode 
-                    ? 'bg-blue-800 border-blue-700 text-blue-200 hover:bg-blue-700' 
-                    : 'bg-blue-600 border-blue-600 text-white hover:bg-blue-700'
-                }`}
+          <div className="flex items-center gap-2 mb-2">
+            <label className={`text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+              System Audio (Optional)
+            </label>
+            <div className="relative group">
+              <svg 
+                className={`w-4 h-4 cursor-help ${isDarkMode ? 'text-gray-500 hover:text-gray-400' : 'text-gray-400 hover:text-gray-600'}`} 
+                fill="currentColor" 
+                viewBox="0 0 20 20"
               >
-                macOS: Get BlackHole
-              </button>
-              <button
-                onClick={() => onExternalUrlOpen('https://vb-audio.com/Cable/')}
-                disabled={disabled}
-                className={`text-xs px-3 py-1.5 rounded-full border transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
-                  isDarkMode 
-                    ? 'bg-blue-800 border-blue-700 text-blue-200 hover:bg-blue-700' 
-                    : 'bg-blue-600 border-blue-600 text-white hover:bg-blue-700'
-                }`}
-              >
-                Windows: Get VB-Cable
-              </button>
+                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
+              </svg>
+              <div className={`absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 text-xs rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-10 w-72 ${
+                isDarkMode ? 'bg-gray-800 text-gray-200 border border-gray-700' : 'bg-white text-gray-700 border border-gray-200'
+              }`}>
+                <div className="text-left">
+                  <p className="font-medium mb-1">Capture audio from other apps</p>
+                  <p className="mb-2">Your OS blocks direct audio capture for privacy. Virtual audio software creates a safe bridge:</p>
+                  <div className="text-xs space-y-1">
+                    <p><strong>macOS:</strong> BlackHole</p>
+                    <p><strong>Windows:</strong> VB-Cable</p>
+                    <p><strong>Linux:</strong> PulseAudio loopback</p>
+                  </div>
+                </div>
+                <div className={`absolute top-full left-1/2 transform -translate-x-1/2 w-2 h-2 rotate-45 ${
+                  isDarkMode ? 'bg-gray-800 border-r border-b border-gray-700' : 'bg-white border-r border-b border-gray-200'
+                }`}></div>
+              </div>
             </div>
           </div>
+
           {systemDevices.length > 0 && (
             <select
               value={selectedSystemId || ''}
@@ -194,9 +190,6 @@ export const SessionSetup = memo(function SessionSetup({
               })}
             </select>
           )}
-          <p className={`text-xs mt-2 ${isDarkMode ? 'text-gray-500' : 'text-gray-500'}`}>
-            After installing virtual audio software, restart this app and select your virtual device above
-          </p>
         </div>
 
         <div className="col-span-12 md:col-span-6 border-t pt-6 mt-6">
