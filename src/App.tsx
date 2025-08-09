@@ -331,200 +331,301 @@ function App() {
   const canStart = updateStartButtonState()
   const errorMessage = getErrorMessage()
 
+  // Status color and icon
+  const getStatusConfig = () => {
+    switch (appState.status) {
+      case 'READY':
+        return { color: 'bg-gray-500', icon: '⏸', text: 'Ready' }
+      case 'CONNECTING':
+        return { color: 'bg-yellow-500', icon: '🔄', text: 'Connecting...' }
+      case 'LISTENING':
+        return { color: 'bg-green-500', icon: '🎤', text: 'Listening' }
+      case 'RECONNECTING':
+        return { color: 'bg-orange-500', icon: '🔄', text: 'Reconnecting...' }
+      case 'ERROR':
+        return { color: 'bg-red-500', icon: '⚠️', text: 'Error' }
+      default:
+        return { color: 'bg-gray-500', icon: '⏸', text: 'Unknown' }
+    }
+  }
+
+  const statusConfig = getStatusConfig()
+
   return (
-    <div className="min-h-screen bg-gray-900 text-white">
-      {/* Top Bar Controls */}
-      <div className="bg-gray-800 p-4 space-y-4">
-        {/* Direction Selection */}
-        <div className="flex items-center space-x-4">
-          <label className="text-sm font-medium">Translation Direction:</label>
-          <div className="flex space-x-4">
-            <label className="flex items-center space-x-2">
-              <input
-                type="radio"
-                name="direction"
-                value="en-es"
-                checked={appState.direction === 'en-es'}
-                onChange={(e) => setAppState(prev => ({ ...prev, direction: e.target.value as TranslationDirection }))}
-                className="text-blue-600"
-              />
-              <span>EN→ES</span>
-            </label>
-            <label className="flex items-center space-x-2">
-              <input
-                type="radio"
-                name="direction"
-                value="es-en"
-                checked={appState.direction === 'es-en'}
-                onChange={(e) => setAppState(prev => ({ ...prev, direction: e.target.value as TranslationDirection }))}
-                className="text-blue-600"
-              />
-              <span>ES→EN</span>
-            </label>
-          </div>
-        </div>
-
-        {/* Microphone Selection */}
-        <div className="flex items-center space-x-4">
-          <label className="text-sm font-medium w-24">Microphone:</label>
-          <select
-            value={appState.micDeviceId || ''}
-            onChange={(e) => setAppState(prev => ({ ...prev, micDeviceId: e.target.value || null }))}
-            className="bg-gray-700 border border-gray-600 rounded px-3 py-2 flex-1 max-w-md"
-          >
-            <option value="">Select microphone...</option>
-            {micDevices.map(device => (
-              <option key={device.deviceId} value={device.deviceId}>
-                {device.label || `Microphone ${device.deviceId.slice(0, 8)}`}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        {/* System Audio Info */}
-        <div className="bg-blue-900 p-4 rounded-lg">
-          <p className="font-medium mb-2">🎯 Want to translate what others are saying too?</p>
-          <p className="text-sm mb-3">Right now, this app only captures your microphone. To also translate what you hear in Zoom calls, YouTube videos, or any app audio, you'll need a free tool:</p>
-          <div className="flex flex-wrap gap-2 mb-3">
-            <button
-              onClick={() => openExternalUrl('https://existential.audio/blackhole/')}
-              className="bg-blue-700 hover:bg-blue-600 px-3 py-2 rounded text-sm"
-            >
-              <div className="font-medium">macOS: BlackHole</div>
-              <div className="text-xs opacity-75">Free • 2-minute setup</div>
-            </button>
-            <button
-              onClick={() => openExternalUrl('https://vb-audio.com/Cable/')}
-              className="bg-blue-700 hover:bg-blue-600 px-3 py-2 rounded text-sm"
-            >
-              <div className="font-medium">Windows: VB-Cable</div>
-              <div className="text-xs opacity-75">Free • 2-minute setup</div>
-            </button>
-            <button
-              onClick={() => openExternalUrl('https://wiki.archlinux.org/title/PulseAudio/Examples#Monitor_specific_output')}
-              className="bg-blue-700 hover:bg-blue-600 px-3 py-2 rounded text-sm"
-            >
-              <div className="font-medium">Linux: PulseAudio</div>
-              <div className="text-xs opacity-75">Built-in • Terminal setup</div>
-            </button>
-          </div>
-          <p className="text-xs opacity-75 mb-2">Why? Computers block apps from "listening" to system audio for security. These tools create a safe bridge.</p>
-          <button
-            onClick={() => setShowAdvanced(!showAdvanced)}
-            className="text-blue-300 hover:text-blue-200 text-sm underline"
-          >
-            {showAdvanced ? 'Hide virtual audio options' : 'I have virtual audio software'}
-          </button>
-        </div>
-
-        {/* Advanced System Audio Selection */}
-        {showAdvanced && (
-          <div className="flex items-center space-x-4">
-            <label className="text-sm font-medium w-24">Virtual Audio:</label>
-            <select
-              value={appState.systemDeviceId || ''}
-              onChange={(e) => setAppState(prev => ({ ...prev, systemDeviceId: e.target.value || null }))}
-              className="bg-gray-700 border border-gray-600 rounded px-3 py-2 flex-1 max-w-md"
-            >
-              <option value="">Select your virtual audio device...</option>
-              {systemDevices.map(device => {
-                const isVirtual = device.label && ['blackhole', 'virtual', 'soundflower', 'loopback'].some(keyword => 
-                  device.label!.toLowerCase().includes(keyword)
-                )
-                return (
-                  <option key={device.deviceId} value={device.deviceId}>
-                    {isVirtual ? '⭐ ' : ''}{device.label || `Audio Device ${device.deviceId.slice(0, 8)}`}
-                  </option>
-                )
-              })}
-            </select>
-          </div>
-        )}
-
-        {/* Output Folder */}
-        <div className="flex items-center space-x-4">
-          <label className="text-sm font-medium w-24">Output Folder:</label>
-          <div className="flex space-x-2 flex-1 max-w-md">
-            <input
-              type="text"
-              value={appState.outputFolder || ''}
-              readOnly
-              placeholder="No folder selected"
-              className="bg-gray-700 border border-gray-600 rounded px-3 py-2 flex-1"
-            />
-            <button
-              onClick={selectFolder}
-              className="bg-blue-600 hover:bg-blue-500 px-4 py-2 rounded whitespace-nowrap"
-            >
-              Choose Folder
-            </button>
-          </div>
-        </div>
-
-        {/* Session Name */}
-        <div className="flex items-center space-x-4">
-          <label className="text-sm font-medium w-24">Session Name:</label>
-          <div className="flex-1 max-w-md">
-            <input
-              type="text"
-              value={appState.sessionName || ''}
-              onChange={(e) => setAppState(prev => ({ ...prev, sessionName: e.target.value || generateSessionName() }))}
-              placeholder="Auto-generating..."
-              className="bg-gray-700 border border-gray-600 rounded px-3 py-2 w-full"
-            />
-            <div className="text-xs text-gray-400 mt-1">
-              Files will be saved as: {appState.sessionName || 'session'}-en.txt, {appState.sessionName || 'session'}-es.txt
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
+      {/* Modern Header */}
+      <header className="glass-dark border-b border-white/10">
+        <div className="max-w-7xl mx-auto px-6 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl flex items-center justify-center shadow-lg">
+                <span className="text-white text-xl">🌐</span>
+              </div>
+              <h1 className="text-2xl font-bold text-white">Live Translator</h1>
+            </div>
+            
+            {/* Status Badge */}
+            <div className="flex items-center space-x-2">
+              <div className={`flex items-center space-x-2 px-4 py-2 rounded-full glass ${appState.isRecording ? 'status-connecting' : ''}`}>
+                <div className={`w-2 h-2 rounded-full ${statusConfig.color} ${appState.isRecording ? 'pulse-dot' : ''}`}></div>
+                <span className="text-sm text-white/80">{statusConfig.text}</span>
+              </div>
             </div>
           </div>
         </div>
+      </header>
 
-        {/* Error Message */}
-        {errorMessage && (
-          <div className="text-red-400 text-sm">{errorMessage}</div>
-        )}
-
-        {/* Start/Stop Button */}
-        <div>
-          <button
-            onClick={handleStartStop}
-            disabled={!canStart && !appState.isRecording}
-            className={`px-6 py-3 rounded font-medium ${
-              appState.isRecording
-                ? 'bg-red-600 hover:bg-red-500'
-                : canStart
-                ? 'bg-green-600 hover:bg-green-500'
-                : 'bg-gray-600 cursor-not-allowed'
-            }`}
-          >
-            {appState.isRecording ? 'Stop' : 'Start'}
-          </button>
-          <div className="text-xs text-gray-400 mt-1">
-            Status: {appState.status}
-          </div>
-        </div>
-      </div>
-
-      {/* Translation Display */}
-      <div className="flex-1 p-8">
-        <div className="max-w-4xl mx-auto">
-          <h2 className="text-2xl font-bold mb-6 text-center">Live Translation</h2>
-          <div className="bg-gray-800 rounded-lg p-6 min-h-[300px] space-y-4">
-            {translationLines.length === 0 ? (
-              <div className="text-center text-gray-400 py-12">
-                Translations will appear here when you start recording...
-              </div>
-            ) : (
-              translationLines.map((line, index) => (
-                <div
-                  key={line.id}
-                  className={`p-4 bg-gray-700 rounded text-lg ${
-                    index === translationLines.length - 1 ? 'new-line' : ''
+      <div className="max-w-7xl mx-auto px-6 py-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Settings Panel */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* Translation Direction Card */}
+            <div className="glass rounded-2xl p-6 transition-all hover:shadow-xl">
+              <h3 className="text-lg font-semibold text-white mb-4 flex items-center">
+                <span className="mr-2">🔄</span> Translation Direction
+              </h3>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  onClick={() => setAppState(prev => ({ ...prev, direction: 'en-es' }))}
+                  className={`py-3 px-4 rounded-xl font-medium transition-all ${
+                    appState.direction === 'en-es'
+                      ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg transform scale-105'
+                      : 'glass text-white/70 hover:text-white hover:bg-white/10'
                   }`}
                 >
-                  {line.text}
+                  <div className="text-sm opacity-80">English</div>
+                  <div className="text-xs">→</div>
+                  <div className="text-sm opacity-80">Spanish</div>
+                </button>
+                <button
+                  onClick={() => setAppState(prev => ({ ...prev, direction: 'es-en' }))}
+                  className={`py-3 px-4 rounded-xl font-medium transition-all ${
+                    appState.direction === 'es-en'
+                      ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg transform scale-105'
+                      : 'glass text-white/70 hover:text-white hover:bg-white/10'
+                  }`}
+                >
+                  <div className="text-sm opacity-80">Spanish</div>
+                  <div className="text-xs">→</div>
+                  <div className="text-sm opacity-80">English</div>
+                </button>
+              </div>
+            </div>
+
+            {/* Audio Input Card */}
+            <div className="glass rounded-2xl p-6 transition-all hover:shadow-xl">
+              <h3 className="text-lg font-semibold text-white mb-4 flex items-center">
+                <span className="mr-2">🎤</span> Audio Input
+              </h3>
+              
+              {/* Microphone Selection */}
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-white/70 mb-2">
+                    Primary Microphone
+                  </label>
+                  <select
+                    value={appState.micDeviceId || ''}
+                    onChange={(e) => setAppState(prev => ({ ...prev, micDeviceId: e.target.value || null }))}
+                    className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+                  >
+                    <option value="" className="bg-gray-800">Select microphone...</option>
+                    {micDevices.map(device => (
+                      <option key={device.deviceId} value={device.deviceId} className="bg-gray-800">
+                        {device.label || `Microphone ${device.deviceId.slice(0, 8)}`}
+                      </option>
+                    ))}
+                  </select>
                 </div>
-              ))
+
+                {/* System Audio Helper */}
+                <div className="bg-gradient-to-r from-blue-500/20 to-purple-500/20 rounded-xl p-4 border border-white/10">
+                  <div className="flex items-start space-x-3">
+                    <div className="text-2xl">💡</div>
+                    <div className="flex-1">
+                      <p className="font-medium text-white mb-2">
+                        Want to translate system audio too?
+                      </p>
+                      <p className="text-sm text-white/70 mb-3">
+                        Capture audio from Zoom, YouTube, or any app with virtual audio software:
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        <button
+                          onClick={() => openExternalUrl('https://existential.audio/blackhole/')}
+                          className="px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-lg text-sm text-white transition-all"
+                        >
+                          macOS: BlackHole
+                        </button>
+                        <button
+                          onClick={() => openExternalUrl('https://vb-audio.com/Cable/')}
+                          className="px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-lg text-sm text-white transition-all"
+                        >
+                          Windows: VB-Cable
+                        </button>
+                      </div>
+                      <button
+                        onClick={() => setShowAdvanced(!showAdvanced)}
+                        className="mt-3 text-sm text-purple-300 hover:text-purple-200 underline transition-colors"
+                      >
+                        {showAdvanced ? 'Hide advanced options' : 'I have virtual audio installed'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Advanced Audio Options */}
+                {showAdvanced && (
+                  <div className="animate-slideIn">
+                    <label className="block text-sm font-medium text-white/70 mb-2">
+                      Virtual Audio Device
+                    </label>
+                    <select
+                      value={appState.systemDeviceId || ''}
+                      onChange={(e) => setAppState(prev => ({ ...prev, systemDeviceId: e.target.value || null }))}
+                      className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+                    >
+                      <option value="" className="bg-gray-800">Select virtual device...</option>
+                      {systemDevices.map(device => {
+                        const isVirtual = device.label && ['blackhole', 'virtual', 'soundflower', 'loopback'].some(keyword => 
+                          device.label!.toLowerCase().includes(keyword)
+                        )
+                        return (
+                          <option key={device.deviceId} value={device.deviceId} className="bg-gray-800">
+                            {isVirtual ? '⭐ ' : ''}{device.label || `Device ${device.deviceId.slice(0, 8)}`}
+                          </option>
+                        )
+                      })}
+                    </select>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Output Settings Card */}
+            <div className="glass rounded-2xl p-6 transition-all hover:shadow-xl">
+              <h3 className="text-lg font-semibold text-white mb-4 flex items-center">
+                <span className="mr-2">💾</span> Output Settings
+              </h3>
+              
+              <div className="space-y-4">
+                {/* Output Folder */}
+                <div>
+                  <label className="block text-sm font-medium text-white/70 mb-2">
+                    Save Location
+                  </label>
+                  <div className="flex space-x-2">
+                    <input
+                      type="text"
+                      value={appState.outputFolder || ''}
+                      readOnly
+                      placeholder="No folder selected"
+                      className="flex-1 bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white placeholder-white/50 focus:outline-none transition-all"
+                    />
+                    <button
+                      onClick={selectFolder}
+                      className="px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl font-medium hover:shadow-lg transform hover:scale-105 transition-all"
+                    >
+                      Browse
+                    </button>
+                  </div>
+                </div>
+
+                {/* Session Name */}
+                <div>
+                  <label className="block text-sm font-medium text-white/70 mb-2">
+                    Session Name
+                  </label>
+                  <input
+                    type="text"
+                    value={appState.sessionName || ''}
+                    onChange={(e) => setAppState(prev => ({ ...prev, sessionName: e.target.value || generateSessionName() }))}
+                    placeholder="Auto-generating..."
+                    className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+                  />
+                  <p className="text-xs text-white/50 mt-2">
+                    Files: {appState.sessionName || 'session'}-en.txt, {appState.sessionName || 'session'}-es.txt
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Error Message */}
+            {errorMessage && !appState.isRecording && (
+              <div className="flex items-center space-x-2 px-4 py-3 bg-red-500/20 border border-red-500/30 rounded-xl text-red-300">
+                <span>⚠️</span>
+                <span className="text-sm">{errorMessage}</span>
+              </div>
             )}
+
+            {/* Action Button */}
+            <button
+              onClick={handleStartStop}
+              disabled={!canStart && !appState.isRecording}
+              className={`w-full py-4 rounded-xl font-semibold text-lg transition-all transform hover:scale-105 ${
+                appState.isRecording
+                  ? 'bg-gradient-to-r from-red-500 to-pink-500 text-white shadow-xl recording-indicator'
+                  : canStart
+                  ? 'bg-gradient-to-r from-green-500 to-emerald-500 text-white shadow-xl hover:shadow-2xl'
+                  : 'bg-gray-700/50 text-gray-400 cursor-not-allowed'
+              }`}
+            >
+              {appState.isRecording ? (
+                <span className="flex items-center justify-center">
+                  <span className="mr-2">⏹</span> Stop Recording
+                </span>
+              ) : (
+                <span className="flex items-center justify-center">
+                  <span className="mr-2">▶️</span> Start Recording
+                </span>
+              )}
+            </button>
+          </div>
+
+          {/* Translation Display */}
+          <div className="lg:col-span-1">
+            <div className="glass rounded-2xl p-6 sticky top-6">
+              <h3 className="text-lg font-semibold text-white mb-4 flex items-center justify-between">
+                <span className="flex items-center">
+                  <span className="mr-2">📝</span> Live Translation
+                </span>
+                {appState.isRecording && (
+                  <div className="flex items-center space-x-1">
+                    <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
+                    <span className="text-xs text-red-400">LIVE</span>
+                  </div>
+                )}
+              </h3>
+              
+              <div className="min-h-[400px] max-h-[600px] overflow-y-auto custom-scrollbar space-y-3">
+                {translationLines.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center h-[400px] text-center">
+                    <div className="text-6xl mb-4 opacity-20">🎙️</div>
+                    <p className="text-white/50 text-sm">
+                      Translations will appear here
+                    </p>
+                    <p className="text-white/30 text-xs mt-2">
+                      Press Start to begin
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {translationLines.map((line, index) => (
+                      <div
+                        key={line.id}
+                        className={`p-4 rounded-xl glass-dark border border-white/10 ${
+                          index === translationLines.length - 1 ? 'new-line' : ''
+                        }`}
+                      >
+                        <p className="text-white leading-relaxed">{line.text}</p>
+                        <p className="text-xs text-white/30 mt-2">
+                          {new Date(line.timestamp).toLocaleTimeString()}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         </div>
       </div>
