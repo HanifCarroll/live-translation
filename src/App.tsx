@@ -86,20 +86,20 @@ function AppContent() {
     status: "READY",
   });
 
-  const [translationLines, setTranslationLines] = useState<TranslationLine[]>(
-    []
-  );
-  const [showOverlay, setShowOverlay] = useState(false);
-  const [showCountdown, setShowCountdown] = useState(false);
-  const [lastTranscript, setLastTranscript] = useState<TranscriptData | null>(
-    null
-  );
-  const [viewingTranscript, setViewingTranscript] = useState(false);
+  const [translationLines, setTranslationLines] = useState<TranslationLine[]>([]);
+  const [lastTranscript, setLastTranscript] = useState<TranscriptData | null>(null);
   const [transcriptContent, setTranscriptContent] = useState<{
     source: string;
     target: string;
   } | null>(null);
-  const [showSettings, setShowSettings] = useState(false);
+  
+  // UI state consolidated
+  const [uiState, setUiState] = useState({
+    showOverlay: false,
+    showCountdown: false,
+    viewingTranscript: false,
+    showSettings: false
+  });
 
   // Generate session name based on pattern
   const generateSessionName = useCallback(() => {
@@ -192,18 +192,17 @@ function AppContent() {
   });
 
   const handleStartRecording = useCallback(async () => {
-    setShowCountdown(true);
+    setUiState(prev => ({ ...prev, showCountdown: true }));
   }, []);
 
   const handleCountdownComplete = useCallback(async () => {
     try {
-      setShowCountdown(false);
-      setShowOverlay(true);
+      setUiState(prev => ({ ...prev, showCountdown: false, showOverlay: true }));
       setAppState((prev) => ({ ...prev, isRecording: true }));
       await startRecordingHook();
     } catch (error) {
       setAppState((prev) => ({ ...prev, isRecording: false }));
-      setShowOverlay(false);
+      setUiState(prev => ({ ...prev, showOverlay: false }));
     }
   }, [startRecordingHook]);
 
@@ -223,7 +222,7 @@ function AppContent() {
 
       setAppState((prev) => ({ ...prev, isRecording: false }));
       setTranslationLines([]);
-      setShowOverlay(false);
+      setUiState(prev => ({ ...prev, showOverlay: false }));
       await stopRecordingHook();
       setAppState((prev) => ({ ...prev, status: "READY" }));
     } catch (error) {
@@ -274,7 +273,7 @@ function AppContent() {
           source: sourceResult.content || "",
           target: targetResult.content || "",
         });
-        setViewingTranscript(true);
+        setUiState(prev => ({ ...prev, viewingTranscript: true }));
       } else {
         toast.error("Failed to load transcripts");
       }
@@ -292,7 +291,7 @@ function AppContent() {
         await window.electronAPI.deleteTranscriptFile(lastTranscript.source);
         await window.electronAPI.deleteTranscriptFile(lastTranscript.target);
         setLastTranscript(null);
-        setViewingTranscript(false);
+        setUiState(prev => ({ ...prev, viewingTranscript: false }));
         toast.success("Transcripts deleted successfully");
       } catch (error) {
         console.error("Error deleting transcripts:", error);
@@ -308,18 +307,18 @@ function AppContent() {
       }`}
     >
       <CountdownOverlay
-        isVisible={showCountdown}
+        isVisible={uiState.showCountdown}
         onComplete={handleCountdownComplete}
       />
 
       <RecordingOverlay
-        isVisible={showOverlay && appState.isRecording}
+        isVisible={uiState.showOverlay && appState.isRecording}
         translationLines={translationLines}
         onStop={handleStartStop}
       />
 
       {/* Transcript Viewer Modal */}
-      {viewingTranscript && transcriptContent && (
+      {uiState.viewingTranscript && transcriptContent && (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
           <div
             className={`max-w-6xl w-full ${
@@ -340,7 +339,7 @@ function AppContent() {
                   Session Transcripts: {lastTranscript?.sessionName}
                 </h2>
                 <button
-                  onClick={() => setViewingTranscript(false)}
+                  onClick={() => setUiState(prev => ({ ...prev, viewingTranscript: false }))}
                   className={`${
                     isDarkMode
                       ? "text-gray-400 hover:text-gray-300"
@@ -427,7 +426,7 @@ function AppContent() {
                 Delete Transcripts
               </button>
               <button
-                onClick={() => setViewingTranscript(false)}
+                onClick={() => setUiState(prev => ({ ...prev, viewingTranscript: false }))}
                 className={`px-4 py-2 rounded-md text-sm font-medium ${
                   isDarkMode
                     ? "bg-gray-700 text-gray-300 hover:bg-gray-600"
@@ -506,7 +505,7 @@ function AppContent() {
 
               {/* Settings Button */}
               <button
-                onClick={() => setShowSettings(true)}
+                onClick={() => setUiState(prev => ({ ...prev, showSettings: true }))}
                 className={`p-2 rounded-lg transition-colors ${
                   isDarkMode
                     ? "bg-gray-700 text-gray-300 hover:bg-gray-600"
@@ -613,8 +612,8 @@ function AppContent() {
 
       {/* Settings Modal */}
       <Settings
-        isOpen={showSettings}
-        onClose={() => setShowSettings(false)}
+        isOpen={uiState.showSettings}
+        onClose={() => setUiState(prev => ({ ...prev, showSettings: false }))}
         isDarkMode={isDarkMode}
         micDevices={micDevices}
         systemDevices={systemDevices}

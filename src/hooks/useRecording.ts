@@ -151,8 +151,9 @@ export function useRecording(options: UseRecordingOptions): UseRecordingReturn {
         onStatusChange('ERROR')
       })
       
-      // Connect and start
-      await deepgramClientRef.current.connect()
+      // Connect and start with correct language
+      const deepgramLanguage = translationDirection === 'en-es' ? 'en-US' : 'es'
+      await deepgramClientRef.current.connect({ language: deepgramLanguage })
       await new Promise(resolve => setTimeout(resolve, 500))
       
       deepgramClientRef.current.startRecording()
