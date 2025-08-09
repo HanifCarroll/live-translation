@@ -37,6 +37,7 @@ const appState = {
   micDeviceId: null,
   systemDeviceId: null,
   outputFolder: null,
+  sessionName: null,
   isRecording: false,
   status: 'READY'
 };
@@ -45,6 +46,27 @@ const appState = {
 let audioMixer = null;
 let deepgramClient = null;
 let translationService = null;
+
+// Session name generation
+function generateSessionName() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  const hours = String(now.getHours()).padStart(2, '0');
+  const minutes = String(now.getMinutes()).padStart(2, '0');
+  
+  return `session-${year}-${month}-${day}-${hours}${minutes}`;
+}
+
+function updateFilePreview() {
+  const sessionName = appState.sessionName || 'session';
+  const previewElement = document.getElementById('preview-names');
+  
+  if (previewElement) {
+    previewElement.textContent = `${sessionName}-en.txt, ${sessionName}-es.txt`;
+  }
+}
 
 // Direction Selector Handler
 function initializeDirectionSelector() {
@@ -67,6 +89,23 @@ function initializeDirectionSelector() {
   }
 }
 
+// Session Name Handler
+function initializeSessionName() {
+  const sessionInput = document.getElementById('session-name');
+  
+  // Generate initial session name
+  const initialSessionName = generateSessionName();
+  sessionInput.value = initialSessionName;
+  appState.sessionName = initialSessionName;
+  updateFilePreview();
+  
+  // Handle manual input changes
+  sessionInput.addEventListener('input', (e) => {
+    appState.sessionName = e.target.value.trim() || generateSessionName();
+    updateFilePreview();
+  });
+}
+
 // Helper function to update Start button state
 function updateStartButtonState() {
   const startBtn = document.getElementById('start-stop-btn');
@@ -78,8 +117,8 @@ function updateStartButtonState() {
   
   startBtn.disabled = !canStart;
   
-  // Display inline error messages for missing fields
-  const statusContainer = document.getElementById('status-container');
+  // Display inline error messages for missing fields - moved to controls section
+  const controlsDiv = document.getElementById('controls');
   let errorMessage = '';
   
   if (!appState.isRecording) {
@@ -97,7 +136,7 @@ function updateStartButtonState() {
       errorDiv = document.createElement('div');
       errorDiv.id = 'inline-error';
       errorDiv.className = 'inline-error';
-      statusContainer.appendChild(errorDiv);
+      controlsDiv.appendChild(errorDiv);
     }
     errorDiv.textContent = errorMessage;
   } else if (errorDiv) {
@@ -351,8 +390,8 @@ async function startRecording() {
     startStopBtn.classList.add('stop-mode');
     updateStatus('CONNECTING');
     
-    // Create transcript files
-    const result = await window.electronAPI.createTranscriptFiles(appState.outputFolder);
+    // Create transcript files with session name
+    const result = await window.electronAPI.createTranscriptFiles(appState.outputFolder, appState.sessionName);
     if (!result.success) {
       throw new Error(`Failed to create transcript files: ${result.error}`);
     }
@@ -566,39 +605,10 @@ const translationDisplay = {
   }
 };
 
-// Update Status Display
+// Update Status (simplified - no visual display)
 function updateStatus(status) {
   appState.status = status;
-  const statusChip = document.getElementById('status-chip');
-  
-  // Remove all status classes
-  statusChip.className = 'status-chip';
-  
-  // Add appropriate status class
-  switch(status) {
-    case 'READY':
-      statusChip.classList.add('status-ready');
-      statusChip.textContent = 'READY';
-      break;
-    case 'CONNECTING':
-      statusChip.classList.add('status-connecting');
-      statusChip.textContent = 'CONNECTING';
-      break;
-    case 'LISTENING':
-      statusChip.classList.add('status-listening');
-      statusChip.textContent = 'LISTENING';
-      break;
-    case 'RECONNECTING':
-      statusChip.classList.add('status-reconnecting');
-      statusChip.textContent = 'RECONNECTING';
-      break;
-    case 'ERROR':
-      statusChip.classList.add('status-error');
-      statusChip.textContent = 'ERROR';
-      break;
-    default:
-      statusChip.textContent = status;
-  }
+  console.log('Status updated to:', status);
 }
 
 // Show permission error with button to open system settings
@@ -697,6 +707,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   await initializeMicrophoneSelector();
   await initializeSystemAudioSelector();
   await initializeFolderPicker();
+  initializeSessionName();
   initializeStartStopButton();
   initializeAdvancedToggle();
   initializeExternalLinks();

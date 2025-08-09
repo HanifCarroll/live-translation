@@ -72,14 +72,18 @@
         </div>
 
         <div class="control-group">
+          <label for="session-name">Session Name:</label>
+          <input type="text" id="session-name" class="device-select" placeholder="Auto-generating...">
+          <div class="file-preview" id="file-preview">
+            <small class="preview-text">Files will be saved as: <span id="preview-names">session-en.txt, session-es.txt</span></small>
+          </div>
+        </div>
+
+        <div class="control-group">
           <button id="start-stop-btn" class="primary-btn" disabled>Start</button>
         </div>
       </div>
 
-      <!-- Status Indicator -->
-      <div id="status-container">
-        <span id="status-chip" class="status-chip status-ready">READY</span>
-      </div>
 
       <!-- Translation Overlay Panel -->
       <div id="translation-panel" class="translation-panel">

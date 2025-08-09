@@ -93,7 +93,7 @@ ipcMain.handle('dialog:selectFolder', async () => {
 });
 
 // Handle transcript file creation
-ipcMain.handle('files:createTranscripts', async (event, folderPath) => {
+ipcMain.handle('files:createTranscripts', async (event, folderPath, sessionName = 'transcript') => {
   try {
     // Close any existing file streams
     if (transcriptFiles.en) {
@@ -105,9 +105,9 @@ ipcMain.handle('files:createTranscripts', async (event, folderPath) => {
       transcriptFiles.es = null;
     }
     
-    // Create new file streams (overwrite mode)
-    const enPath = path.join(folderPath, 'transcript-en.txt');
-    const esPath = path.join(folderPath, 'transcript-es.txt');
+    // Create new file streams (overwrite mode) with custom session name
+    const enPath = path.join(folderPath, `${sessionName}-en.txt`);
+    const esPath = path.join(folderPath, `${sessionName}-es.txt`);
     
     transcriptFiles.en = fs.createWriteStream(enPath, { flags: 'w', encoding: 'utf8' });
     transcriptFiles.es = fs.createWriteStream(esPath, { flags: 'w', encoding: 'utf8' });

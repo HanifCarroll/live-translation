@@ -9,7 +9,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   selectFolder: () => ipcRenderer.invoke('dialog:selectFolder'),
   
   // File operations
-  createTranscriptFiles: (folderPath) => ipcRenderer.invoke('files:createTranscripts', folderPath),
+  createTranscriptFiles: (folderPath, sessionName) => ipcRenderer.invoke('files:createTranscripts', folderPath, sessionName),
   appendToTranscript: (filename, text) => ipcRenderer.invoke('files:appendTranscript', filename, text),
   closeTranscriptFiles: () => ipcRenderer.invoke('files:closeTranscripts'),
   
