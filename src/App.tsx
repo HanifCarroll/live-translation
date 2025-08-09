@@ -200,11 +200,19 @@ function AppContent() {
       setUiState(prev => ({ ...prev, showCountdown: false, showOverlay: true }));
       setAppState((prev) => ({ ...prev, isRecording: true }));
       await startRecordingHook();
-    } catch (error) {
+    } catch (error: any) {
       setAppState((prev) => ({ ...prev, isRecording: false }));
       setUiState(prev => ({ ...prev, showOverlay: false }));
+      // Don't show error for user cancellation
+      if (error?.message !== 'CANCELLED') {
+        console.error('Error during countdown completion:', error);
+      }
     }
   }, [startRecordingHook]);
+
+  const handleCountdownCancel = useCallback(() => {
+    setUiState(prev => ({ ...prev, showCountdown: false }));
+  }, []);
 
   const handleStopRecording = useCallback(async () => {
     try {
@@ -224,10 +232,12 @@ function AppContent() {
       setTranslationLines([]);
       setUiState(prev => ({ ...prev, showOverlay: false }));
       await stopRecordingHook();
-      setAppState((prev) => ({ ...prev, status: "READY" }));
     } catch (error) {
-      setAppState((prev) => ({ ...prev, status: "ERROR" }));
+      console.error('Error during stop recording cleanup:', error);
+      // Don't set ERROR status - stopping is always considered successful from UI perspective
     }
+    // Always set to READY after stopping, regardless of cleanup errors
+    setAppState((prev) => ({ ...prev, status: "READY" }));
   }, [
     stopRecordingHook,
     appState.outputFolder,
@@ -309,6 +319,7 @@ function AppContent() {
       <CountdownOverlay
         isVisible={uiState.showCountdown}
         onComplete={handleCountdownComplete}
+        onCancel={handleCountdownCancel}
       />
 
       <RecordingOverlay

@@ -31,6 +31,7 @@ export function useRecording(options: UseRecordingOptions): UseRecordingReturn {
   const audioMixerRef = useRef<AudioMixer | null>(null)
   const deepgramClientRef = useRef<DeepgramClient | null>(null)
   const translationServiceRef = useRef<TranslationService | null>(null)
+  const isStoppingRef = useRef<boolean>(false)
 
   const cleanup = useCallback(async () => {
     try {
@@ -108,7 +109,10 @@ export function useRecording(options: UseRecordingOptions): UseRecordingReturn {
         } else if (status === 'reconnecting') {
           onStatusChange('RECONNECTING')
         } else if (status === 'disconnected') {
-          onStatusChange('ERROR')
+          // Only treat disconnection as error if we're not intentionally stopping
+          if (!isStoppingRef.current) {
+            onStatusChange('ERROR')
+          }
         }
       })
       
@@ -158,6 +162,11 @@ export function useRecording(options: UseRecordingOptions): UseRecordingReturn {
       await deepgramClientRef.current.connect({ language: deepgramLanguage })
       await new Promise(resolve => setTimeout(resolve, 500))
       
+      // Check if still valid (user might have stopped during initialization)
+      if (!deepgramClientRef.current || !audioMixerRef.current || !translationServiceRef.current) {
+        throw new Error('CANCELLED')
+      }
+      
       deepgramClientRef.current.startRecording()
       audioMixerRef.current.mediaRecorder = await audioMixerRef.current.setupDeepgramStreaming(deepgramClientRef.current)
       
@@ -167,14 +176,19 @@ export function useRecording(options: UseRecordingOptions): UseRecordingReturn {
     } catch (error: any) {
       console.error('Error starting recording:', error)
       onStatusChange('ERROR')
-      toast.error(`Failed to start recording: ${error.message}`)
+      // Don't show toast for user cancellation
+      if (error?.message !== 'CANCELLED') {
+        toast.error(`Failed to start recording: ${error.message}`)
+      }
       await cleanup()
       throw error
     }
   }, [options, cleanup])
 
   const stopRecording = useCallback(async () => {
+    isStoppingRef.current = true
     await cleanup()
+    isStoppingRef.current = false
     toast.success('Recording stopped and transcripts saved')
   }, [cleanup])
 
